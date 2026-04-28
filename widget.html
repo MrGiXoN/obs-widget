@@ -10,7 +10,6 @@ body {
   color: white;
 }
 
-/* 🌫️ GLASS UI */
 .container {
   width: 360px;
   padding: 15px;
@@ -29,18 +28,8 @@ body {
   margin: 6px 0;
   border-radius: 10px;
   background: rgba(255,255,255,0.05);
-  transition: all 0.4s ease;
-}
-
-/* 🔥 highlight zmiany */
-.player.updated {
-  animation: flash 0.6s;
-}
-
-@keyframes flash {
-  0% { transform: scale(1); background: rgba(255,255,255,0.2); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+  transition: transform 0.5s ease, background 0.3s ease;
+  will-change: transform;
 }
 
 /* 🥇 TOP 1 */
@@ -65,6 +54,17 @@ body {
   font-weight: bold;
   transition: all 0.3s ease;
 }
+
+/* 🔥 highlight zmiany */
+.player.updated {
+  animation: flash 0.5s;
+}
+
+@keyframes flash {
+  0% { transform: scale(1); background: rgba(255,255,255,0.2); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
 </style>
 </head>
 
@@ -77,6 +77,7 @@ body {
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
 let lastData = {};
+let playersState = [];
 
 // 🎯 animacja liczby
 function animateNumber(el, start, end) {
@@ -87,11 +88,30 @@ function animateNumber(el, start, end) {
     const progress = Math.min((time - startTime) / duration, 1);
     const value = Math.floor(start + (end - start) * progress);
     el.textContent = value;
-
     if (progress < 1) requestAnimationFrame(update);
   }
 
   requestAnimationFrame(update);
+}
+
+// 🔥 FLIP ANIMATION (smooth reorder)
+function applyFLIP(oldPositions, newElements) {
+  newElements.forEach(el => {
+    const first = oldPositions.get(el.dataset.name);
+    const last = el.getBoundingClientRect();
+
+    if (!first) return;
+
+    const dx = first.left - last.left;
+    const dy = first.top - last.top;
+
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+
+    requestAnimationFrame(() => {
+      el.style.transition = "transform 0.5s ease";
+      el.style.transform = "";
+    });
+  });
 }
 
 async function loadData() {
@@ -99,7 +119,6 @@ async function loadData() {
     const res = await fetch(URL);
     const text = await res.text();
 
-    // 🔥 Google Sheets JSON fix
     const json = JSON.parse(
       text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1)
     );
@@ -115,7 +134,13 @@ async function loadData() {
 
     const board = document.getElementById("board");
 
-    // 🧱 pierwsze renderowanie
+    // 📸 zapis pozycji przed zmianą
+    const oldPositions = new Map();
+    document.querySelectorAll(".player").forEach(el => {
+      oldPositions.set(el.dataset.name, el.getBoundingClientRect());
+    });
+
+    // 🧱 pierwszy render
     if (board.children.length === 0 || board.innerHTML.includes("Ładowanie")) {
       board.innerHTML = players.map((p, i) => `
         <div class="player ${i===0?'top1':''}" data-name="${p.name}">
@@ -131,14 +156,29 @@ async function loadData() {
       return;
     }
 
-    // 🔄 update bez resetu UI
-    players.forEach((p, i) => {
+    // 🔄 aktualizacja DOM
+    board.innerHTML = players.map((p, i) => `
+      <div class="player ${i===0?'top1':''}" data-name="${p.name}">
+        <div class="left">
+          <span class="rank">#${i+1}</span>
+          ${p.name}
+        </div>
+        <div class="points">${p.points}</div>
+      </div>
+    `).join("");
+
+    const newEls = document.querySelectorAll(".player");
+
+    // 🔥 FLIP animation (przesuwanie miejsc)
+    applyFLIP(oldPositions, newEls);
+
+    // 🎯 animacja punktów
+    players.forEach(p => {
       const el = document.querySelector(`[data-name="${p.name}"]`);
       if (!el) return;
 
       const pointsEl = el.querySelector(".points");
 
-      // 🔥 zmiana punktów
       if (lastData[p.name] !== p.points) {
         el.classList.add("updated");
 
@@ -148,15 +188,11 @@ async function loadData() {
           p.points
         );
 
-        setTimeout(() => el.classList.remove("updated"), 600);
+        setTimeout(() => el.classList.remove("updated"), 500);
       }
 
-      // 🥇 ranking
-      el.querySelector(".rank").textContent = `#${i+1}`;
-      el.classList.toggle("top1", i === 0);
+      lastData[p.name] = p.points;
     });
-
-    players.forEach(p => lastData[p.name] = p.points);
 
   } catch (err) {
     console.error(err);
@@ -168,6 +204,5 @@ async function loadData() {
 loadData();
 setInterval(loadData, 3000);
 </script>
-
 </body>
 </html>
