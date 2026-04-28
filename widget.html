@@ -10,34 +10,40 @@ body {
   color: white;
 }
 
+/* 🌫️ GLASS UI */
 .container {
   width: 360px;
   padding: 15px;
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
+  background: rgba(20, 20, 30, 0.55);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
 }
 
+/* 👤 PLAYER */
 .player {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 8px;
+  align-items: center;
+  padding: 8px 10px;
   margin: 6px 0;
   border-radius: 10px;
   background: rgba(255,255,255,0.05);
-  transition: 0.3s;
+  transition: all 0.4s ease;
 }
 
+/* 🔥 highlight zmiany */
 .player.updated {
   animation: flash 0.6s;
 }
 
 @keyframes flash {
   0% { transform: scale(1); background: rgba(255,255,255,0.2); }
-  50% { transform: scale(1.05); }
+  50% { transform: scale(1.03); }
   100% { transform: scale(1); }
 }
 
+/* 🥇 TOP 1 */
 .player.top1 {
   background: linear-gradient(90deg, #f7c948, #fadb5f);
   color: black;
@@ -49,20 +55,15 @@ body {
   align-items: center;
 }
 
-.avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  margin-right: 8px;
-}
-
 .rank {
-  margin-right: 6px;
-  opacity: 0.6;
+  margin-right: 8px;
+  opacity: 0.7;
+  font-weight: bold;
 }
 
 .points {
   font-weight: bold;
+  transition: all 0.3s ease;
 }
 </style>
 </head>
@@ -77,50 +78,96 @@ const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-
 
 let lastData = {};
 
+// 🎯 animacja liczby
+function animateNumber(el, start, end) {
+  const duration = 400;
+  const startTime = performance.now();
+
+  function update(time) {
+    const progress = Math.min((time - startTime) / duration, 1);
+    const value = Math.floor(start + (end - start) * progress);
+    el.textContent = value;
+
+    if (progress < 1) requestAnimationFrame(update);
+  }
+
+  requestAnimationFrame(update);
+}
+
 async function loadData() {
-  const res = await fetch(URL);
-  const text = await res.text();
+  try {
+    const res = await fetch(URL);
+    const text = await res.text();
 
-  const json = JSON.parse(text.substr(47).slice(0, -2));
-  const rows = json.table.rows;
+    // 🔥 Google Sheets JSON fix
+    const json = JSON.parse(
+      text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1)
+    );
 
-  let players = rows.map(r => ({
-    name: r.c[0].v,
-    points: r.c[1].v,
-    avatar: r.c[2]?.v || ""
-  }));
+    const rows = json.table.rows;
 
-  players.sort((a,b) => b.points - a.points);
+    let players = rows.map(r => ({
+      name: r.c[0]?.v || "",
+      points: r.c[1]?.v || 0
+    }));
 
-  let html = "";
+    players.sort((a,b) => b.points - a.points);
 
-  players.forEach((p, i) => {
-    let updated = "";
+    const board = document.getElementById("board");
 
-    if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
-      updated = "updated";
+    // 🧱 pierwsze renderowanie
+    if (board.children.length === 0 || board.innerHTML.includes("Ładowanie")) {
+      board.innerHTML = players.map((p, i) => `
+        <div class="player ${i===0?'top1':''}" data-name="${p.name}">
+          <div class="left">
+            <span class="rank">#${i+1}</span>
+            ${p.name}
+          </div>
+          <div class="points">${p.points}</div>
+        </div>
+      `).join("");
+
+      players.forEach(p => lastData[p.name] = p.points);
+      return;
     }
 
-    html += `
-      <div class="player ${i===0?'top1':''} ${updated}">
-        <div class="left">
-          <img class="avatar" src="${p.avatar}">
-          <span class="rank">#${i+1}</span>
-          ${p.name}
-        </div>
-        <div class="points">${p.points}</div>
-      </div>
-    `;
-  });
+    // 🔄 update bez resetu UI
+    players.forEach((p, i) => {
+      const el = document.querySelector(`[data-name="${p.name}"]`);
+      if (!el) return;
 
-  lastData = {};
-  players.forEach(p => lastData[p.name] = p.points);
+      const pointsEl = el.querySelector(".points");
 
-  document.getElementById("board").innerHTML = html;
+      // 🔥 zmiana punktów
+      if (lastData[p.name] !== p.points) {
+        el.classList.add("updated");
+
+        animateNumber(
+          pointsEl,
+          lastData[p.name] || 0,
+          p.points
+        );
+
+        setTimeout(() => el.classList.remove("updated"), 600);
+      }
+
+      // 🥇 ranking
+      el.querySelector(".rank").textContent = `#${i+1}`;
+      el.classList.toggle("top1", i === 0);
+    });
+
+    players.forEach(p => lastData[p.name] = p.points);
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("board").innerHTML =
+      "Błąd ładowania danych";
+  }
 }
 
 loadData();
 setInterval(loadData, 3000);
 </script>
+
 </body>
 </html>
