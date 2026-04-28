@@ -5,26 +5,63 @@
 <style>
 body {
   margin: 0;
-  font-family: Arial;
-  color: white;
+  font-family: 'Segoe UI', sans-serif;
   background: transparent;
+  color: white;
 }
 
 .container {
-  width: 300px;
-  background: rgba(0,0,0,0.7);
-  border-radius: 10px;
-  padding: 10px;
+  width: 360px;
+  padding: 15px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
 }
 
 .player {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  padding: 5px;
+  padding: 8px;
+  margin: 6px 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.05);
+  transition: 0.3s;
 }
 
-.top1 {
-  color: gold;
+.player.updated {
+  animation: flash 0.6s;
+}
+
+@keyframes flash {
+  0% { transform: scale(1); background: rgba(255,255,255,0.2); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+.player.top1 {
+  background: linear-gradient(90deg, #f7c948, #fadb5f);
+  color: black;
+  font-weight: bold;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  margin-right: 8px;
+}
+
+.rank {
+  margin-right: 6px;
+  opacity: 0.6;
+}
+
+.points {
   font-weight: bold;
 }
 </style>
@@ -36,7 +73,9 @@ body {
 </div>
 
 <script>
-const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
+const URL = "TU_WKLEJ_LINK";
+
+let lastData = {};
 
 async function loadData() {
   const res = await fetch(URL);
@@ -47,18 +86,35 @@ async function loadData() {
 
   let players = rows.map(r => ({
     name: r.c[0].v,
-    points: r.c[1].v
+    points: r.c[1].v,
+    avatar: r.c[2]?.v || ""
   }));
 
   players.sort((a,b) => b.points - a.points);
 
   let html = "";
+
   players.forEach((p, i) => {
-    html += `<div class="player ${i===0?'top1':''}">
-      <span>#${i+1} ${p.name}</span>
-      <span>${p.points}</span>
-    </div>`;
+    let updated = "";
+
+    if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
+      updated = "updated";
+    }
+
+    html += `
+      <div class="player ${i===0?'top1':''} ${updated}">
+        <div class="left">
+          <img class="avatar" src="${p.avatar}">
+          <span class="rank">#${i+1}</span>
+          ${p.name}
+        </div>
+        <div class="points">${p.points}</div>
+      </div>
+    `;
   });
+
+  lastData = {};
+  players.forEach(p => lastData[p.name] = p.points);
 
   document.getElementById("board").innerHTML = html;
 }
