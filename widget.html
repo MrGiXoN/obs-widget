@@ -141,19 +141,20 @@ async function loadData() {
     });
 
     // 🧱 pierwszy render
-    if (board.children.length === 0 || board.innerHTML.includes("Ładowanie")) {
-      board.innerHTML = players.map((p, i) => `
-        <div class="player ${i===0?'top1':''}" data-name="${p.name}">
-          <div class="left">
-            <span class="rank">#${i+1}</span>
-            ${p.name}
-          </div>
-          <div class="points">${p.points}</div>
-        </div>
-      `).join("");
+    const html = players
+  .sort((a, b) => b.points - a.points)
+  .map((p, i) => `
+    <div class="player ${i === 0 ? 'top1' : ''}" data-name="${p.name}">
+      <div class="left">
+        <span class="rank">#${i+1}</span>
+        ${p.name}
+      </div>
+      <div class="points">${p.points}</div>
+    </div>
+  `)
+  .join("");
 
-      players.forEach(p => lastData[p.name] = p.points);
-      return;
+document.getElementById("board").innerHTML = html;
     }
 
     // 🔄 aktualizacja DOM
