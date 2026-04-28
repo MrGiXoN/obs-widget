@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  color: white;
+  background: transparent;
+}
+
+.container {
+  width: 300px;
+  background: rgba(0,0,0,0.7);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.player {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px;
+}
+
+.top1 {
+  color: gold;
+  font-weight: bold;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <div id="board">Ładowanie...</div>
+</div>
+
+<script>
+const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
+
+async function loadData() {
+  const res = await fetch(URL);
+  const text = await res.text();
+
+  const json = JSON.parse(text.substr(47).slice(0, -2));
+  const rows = json.table.rows;
+
+  let players = rows.map(r => ({
+    name: r.c[0].v,
+    points: r.c[1].v
+  }));
+
+  players.sort((a,b) => b.points - a.points);
+
+  let html = "";
+  players.forEach((p, i) => {
+    html += `<div class="player ${i===0?'top1':''}">
+      <span>#${i+1} ${p.name}</span>
+      <span>${p.points}</span>
+    </div>`;
+  });
+
+  document.getElementById("board").innerHTML = html;
+}
+
+loadData();
+setInterval(loadData, 3000);
+</script>
+</body>
+</html>
