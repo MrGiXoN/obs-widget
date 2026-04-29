@@ -26,6 +26,8 @@ body {
   background: rgba(12, 14, 20, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
+
+  min-height: 400px;
 }
 
 /* PLAYER */
@@ -33,13 +35,18 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   padding: 10px 12px;
   margin: 8px 0;
+
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-  transition: 0.3s;
+
   position: relative;
+
+  transition: transform 0.6s ease, box-shadow 0.6s ease;
+  will-change: transform;
 }
 
 /* LEFT */
@@ -87,21 +94,7 @@ body {
   100% { transform: scale(1); }
 }
 
-/* NAME SHINE */
-.player.top1 .name {
-  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shine 2s linear infinite;
-}
-
-@keyframes shine {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-
-/* 👑 CORONA (STATYCZNA) */
+/* 👑 CORONA */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -117,15 +110,9 @@ body {
   box-shadow: 0 0 40px rgba(255,215,0,1);
 }
 
-/* POWERUP */
-.player.powerup {
-  animation: powerUp 0.8s ease;
-}
-
-@keyframes powerUp {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
+/* MOVE ANIMATION (FLIP) */
+.player.moving {
+  transition: transform 0.6s ease;
 }
 </style>
 </head>
@@ -143,7 +130,6 @@ const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-
 
 let lastLeader = null;
 let winTriggered = {};
-let crownState = {};
 
 /* CONFETTI */
 function launchConfetti() {
@@ -160,9 +146,11 @@ function launchConfetti() {
     c.style.zIndex = 9999;
     document.body.appendChild(c);
 
-    let fall = setInterval(() => {
-      c.style.top = (parseFloat(c.style.top) + 5) + "px";
-      if (parseFloat(c.style.top) > window.innerHeight) {
+    let y = 0;
+    const fall = setInterval(() => {
+      y += 5;
+      c.style.top = y + "px";
+      if (y > window.innerHeight) {
         c.remove();
         clearInterval(fall);
       }
@@ -170,6 +158,28 @@ function launchConfetti() {
 
     if (Date.now() < end) requestAnimationFrame(frame);
   })();
+}
+
+/* FLIP ANIMATION SYSTEM */
+function moveElement(el, toContainer) {
+  const first = el.getBoundingClientRect();
+
+  toContainer.appendChild(el);
+
+  const last = el.getBoundingClientRect();
+
+  const deltaY = first.top - last.top;
+
+  el.style.transform = `translateY(${deltaY}px)`;
+
+  requestAnimationFrame(() => {
+    el.classList.add("moving");
+    el.style.transform = "translateY(0)";
+  });
+
+  setTimeout(() => {
+    el.classList.remove("moving");
+  }, 600);
 }
 
 /* LOAD */
@@ -194,7 +204,6 @@ async function loadData() {
     };
   });
 
-  /* SORT */
   players.sort((a,b) => {
     if (a.isWin && !b.isWin) return -1;
     if (!a.isWin && b.isWin) return 1;
@@ -203,8 +212,8 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  document.getElementById("col1").innerHTML = render(players.slice(0,4));
-  document.getElementById("col2").innerHTML = render(players.slice(4,8));
+  render(players.slice(0,4), "col1");
+  render(players.slice(4,8), "col2");
 
   /* TOP1 */
   const leader = players[0]?.name;
@@ -218,51 +227,61 @@ async function loadData() {
     lastLeader = leader;
   }
 
-  /* LOGIC */
+  /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
-    const pointsEl = el.querySelector(".points");
-
-    /* WIN */
-    if (p.isWin) {
-      el.classList.add("win");
-
-      if (!winTriggered[p.name]) {
-        winTriggered[p.name] = true;
-        launchConfetti();
-      }
-
-      pointsEl.textContent = "🏆 WIN";
-      return;
+    if (p.isWin && !winTriggered[p.name]) {
+      winTriggered[p.name] = true;
+      launchConfetti();
     }
-
-    /* 20+ */
-    if (p.points >= 20) {
-      el.classList.add("achieved20");
-    }
-
-    pointsEl.textContent = p.points;
   });
 }
 
-/* RENDER */
-function render(players) {
-  return players.map(p => `
-    <div class="player ${p.rank===1?'top1':''} ${p.isWin?'win':''}" data-name="${p.name}">
-      <div class="left">
-        <img class="avatar" src="${p.avatar}">
-        <span class="rank">#${p.rank}</span>
-        <span class="name">${p.name}</span>
-      </div>
+/* RENDER + FLIP MOVE */
+function render(players, colId) {
+  const container = document.getElementById(colId);
 
-      <div style="display:flex; align-items:center;">
-        <span class="crown">👑</span>
-        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
-      </div>
-    </div>
-  `).join("");
+  const existing = new Map();
+  container.querySelectorAll(".player").forEach(el => {
+    existing.set(el.dataset.name, el);
+  });
+
+  players.forEach(p => {
+    let el = existing.get(p.name);
+
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "player";
+      el.dataset.name = p.name;
+
+      el.innerHTML = `
+        <div class="left">
+          <img class="avatar" src="${p.avatar}">
+          <span class="rank">#${p.rank}</span>
+          <span class="name">${p.name}</span>
+        </div>
+
+        <div style="display:flex; align-items:center;">
+          <span class="crown">👑</span>
+          <span class="points"></span>
+        </div>
+      `;
+
+      container.appendChild(el);
+    }
+
+    moveElement(el, container);
+
+    el.querySelector(".rank").textContent = "#" + p.rank;
+    el.querySelector(".points").textContent = p.isWin ? "🏆 WIN" : p.points;
+
+    if (p.rank === 1) el.classList.add("top1");
+    else el.classList.remove("top1");
+
+    if (p.points >= 20) el.classList.add("achieved20");
+  });
 }
 
 loadData();
