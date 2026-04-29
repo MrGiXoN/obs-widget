@@ -75,9 +75,35 @@ body {
   color: #facc15;
 }
 
-/* =========================
-   🥇 TOP 1 (WRÓCIŁ GL0W)
-========================= */
+/* 👑 20 POINTS CORONA */
+.crown {
+  display: none;
+  margin: 0 6px;
+  animation: crownPop 0.3s ease;
+}
+
+.player.achieved20 .crown {
+  display: inline-block;
+}
+
+@keyframes crownPop {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* 🏆 WIN */
+.player.win {
+  border: 1px solid #ffd700;
+  box-shadow: 0 0 30px rgba(255,215,0,0.9);
+  animation: winPulse 1s infinite alternate;
+}
+
+@keyframes winPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.03); }
+}
+
+/* 🥇 TOP1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.6);
   box-shadow: 0 0 15px rgba(255,215,0,0.4);
@@ -96,21 +122,7 @@ body {
   100% { background-position: 200% center; }
 }
 
-/* =========================
-   🏆 WIN STYLE
-========================= */
-.player.win {
-  border: 1px solid #ffd700;
-  box-shadow: 0 0 30px rgba(255,215,0,0.9);
-  animation: winPulse 1s infinite alternate;
-}
-
-@keyframes winPulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.03); }
-}
-
-/* POWERUP */
+/* 🔥 POWERUP */
 .player.powerup {
   animation: powerUp 0.9s ease;
 }
@@ -134,6 +146,7 @@ const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-
 
 let lastLeader = null;
 let winTriggered = {};
+let last20 = {};
 
 /* 🎉 CONFETTI */
 function launchConfetti() {
@@ -193,9 +206,8 @@ async function loadData() {
   document.getElementById("col1").innerHTML = render(players.slice(0,4));
   document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  /* LEADER CHANGE */
+  /* LEADER */
   const newLeader = players[0]?.name;
-
   if (newLeader && newLeader !== lastLeader) {
     const el = document.querySelector(`[data-name="${newLeader}"]`);
     if (el) {
@@ -205,11 +217,15 @@ async function loadData() {
     lastLeader = newLeader;
   }
 
-  /* WIN LOGIC (FIXED) */
+  /* LOGIC */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
+    const pointsEl = el.querySelector(".points");
+    const crown = el.querySelector(".crown");
+
+    /* 🏆 WIN */
     if (p.isWin) {
       el.classList.add("win");
 
@@ -217,7 +233,25 @@ async function loadData() {
         winTriggered[p.name] = true;
         launchConfetti();
       }
+
+      pointsEl.textContent = "🏆 WIN";
+      return;
     }
+
+    /* 👑 20 POINTS */
+    if (p.points >= 20) {
+      el.classList.add("achieved20");
+
+      if (!last20[p.name]) {
+        el.classList.add("powerup");
+        setTimeout(() => el.classList.remove("powerup"), 900);
+        last20[p.name] = true;
+      }
+
+      if (crown) crown.style.display = "inline-block";
+    }
+
+    pointsEl.textContent = p.points;
   });
 }
 
@@ -230,8 +264,10 @@ function render(players) {
         <span class="rank">#${p.rank}</span>
         <span class="name">${p.name}</span>
       </div>
-      <div class="points">
-        ${p.isWin ? "🏆 WIN" : p.points}
+
+      <div style="display:flex; align-items:center;">
+        <span class="crown">👑</span>
+        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
       </div>
     </div>
   `).join("");
