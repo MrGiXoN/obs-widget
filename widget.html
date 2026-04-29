@@ -10,52 +10,60 @@ body {
   color: white;
 }
 
-/* 🔥 GLASS PANEL */
+/* 🔥 PANEL */
 .container {
-  width: 380px;
-  padding: 16px;
-  border-radius: 20px;
-  background: rgba(15, 15, 25, 0.55);
-  backdrop-filter: blur(14px);
+  width: 400px;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(10, 10, 20, 0.6);
+  backdrop-filter: blur(16px);
   box-shadow: 
-    0 10px 40px rgba(0,0,0,0.6),
-    inset 0 0 20px rgba(255,255,255,0.03);
+    0 10px 50px rgba(0,0,0,0.7),
+    inset 0 0 30px rgba(255,255,255,0.03);
 }
 
-/* 🏆 tytuł */
+/* 🏆 title */
 .title {
-  font-size: 18px;
-  margin-bottom: 10px;
-  opacity: 0.85;
-  font-weight: 600;
+  font-size: 20px;
+  margin-bottom: 12px;
+  opacity: 0.9;
+  font-weight: 700;
 }
 
-/* 👤 PLAYER */
+/* 👤 player base */
 .player {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
   margin: 6px 0;
-  border-radius: 12px;
+  border-radius: 14px;
   background: rgba(255,255,255,0.05);
   transition: transform 0.5s ease, background 0.3s ease;
 }
 
-/* hover subtle */
-.player:hover {
-  background: rgba(255,255,255,0.08);
-}
-
-/* 🥇 TOP 1 */
+/* 👑 TOP 1 */
 .player.top1 {
+  transform: scale(1.08);
   background: linear-gradient(90deg, #f7c948, #fadb5f);
   color: black;
+  box-shadow: 0 0 25px rgba(255,215,0,0.6);
   font-weight: bold;
-  box-shadow: 0 0 15px rgba(255,215,0,0.4);
 }
 
-/* left side */
+/* 🥈🥉 TOP 2 i 3 */
+.player.top2, .player.top3 {
+  transform: scale(1.04);
+  background: rgba(255,255,255,0.12);
+  font-weight: 600;
+}
+
+/* normal */
+.player.normal {
+  opacity: 0.85;
+}
+
+/* left */
 .left {
   display: flex;
   align-items: center;
@@ -63,10 +71,10 @@ body {
 
 /* avatar */
 .avatar {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  margin-right: 8px;
+  margin-right: 10px;
   object-fit: cover;
   border: 2px solid rgba(255,255,255,0.2);
 }
@@ -81,17 +89,17 @@ body {
 /* points */
 .points {
   font-weight: bold;
-  font-size: 16px;
+  font-size: 18px;
 }
 
-/* 🔥 zmiana */
+/* ✨ zmiana */
 .player.updated {
-  animation: flash 0.5s;
+  animation: pulse 0.5s;
 }
 
-@keyframes flash {
-  0% { transform: scale(1); background: rgba(255,255,255,0.2); }
-  50% { transform: scale(1.05); }
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); background: rgba(255,255,255,0.2); }
   100% { transform: scale(1); }
 }
 </style>
@@ -108,7 +116,7 @@ const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-
 
 let lastData = {};
 
-// 🎯 animacja liczby
+// 🎯 liczby
 function animateNumber(el, start, end) {
   const duration = 400;
   const startTime = performance.now();
@@ -163,29 +171,33 @@ async function loadData() {
 
     const board = document.getElementById("board");
 
-    // 📸 stare pozycje
     const oldPositions = new Map();
     document.querySelectorAll(".player").forEach(el => {
       oldPositions.set(el.dataset.name, el.getBoundingClientRect());
     });
 
-    // 🧱 render
-    board.innerHTML = players.map((p, i) => `
-      <div class="player ${i===0?'top1':''}" data-name="${p.name}">
-        <div class="left">
-          <img class="avatar" src="${p.avatar}">
-          <span class="rank">#${i+1}</span>
-          ${p.name}
+    board.innerHTML = players.map((p, i) => {
+      let cls = "normal";
+      if (i === 0) cls = "top1";
+      else if (i === 1) cls = "top2";
+      else if (i === 2) cls = "top3";
+
+      return `
+        <div class="player ${cls}" data-name="${p.name}">
+          <div class="left">
+            <img class="avatar" src="${p.avatar}">
+            <span class="rank">#${i+1}</span>
+            ${p.name}
+          </div>
+          <div class="points">${p.points}</div>
         </div>
-        <div class="points">${p.points}</div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
     const newEls = document.querySelectorAll(".player");
 
     applyFLIP(oldPositions, newEls);
 
-    // 🎯 animacje punktów
     players.forEach(p => {
       const el = document.querySelector(`[data-name="${p.name}"]`);
       if (!el) return;
@@ -195,11 +207,7 @@ async function loadData() {
       if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
         el.classList.add("updated");
 
-        animateNumber(
-          pointsEl,
-          lastData[p.name],
-          p.points
-        );
+        animateNumber(pointsEl, lastData[p.name], p.points);
 
         setTimeout(() => el.classList.remove("updated"), 500);
       }
