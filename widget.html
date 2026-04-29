@@ -41,9 +41,9 @@ body {
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
 
-  transition: transform 0.6s cubic-bezier(0.2,0.8,0.2,1),
-              box-shadow 0.4s,
-              opacity 0.4s;
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.6s,
+              opacity 0.6s;
   will-change: transform;
 }
 
@@ -83,16 +83,23 @@ body {
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
   box-shadow: 0 0 30px rgba(255,215,0,0.6);
-  animation: topPulse 1.6s infinite ease-in-out;
 }
 
-@keyframes topPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+/* NAME SHINE */
+.player.top1 .name {
+  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2s linear infinite;
 }
 
-/* 👑 */
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* 👑 CORONA */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -107,6 +114,12 @@ body {
   border: 1px solid #ffd700;
   box-shadow: 0 0 40px rgba(255,215,0,1);
 }
+
+/* MOVE ANIMATION BOOST */
+.player.moving {
+  z-index: 10;
+  transform: scale(1.03);
+}
 </style>
 </head>
 
@@ -119,39 +132,44 @@ body {
 <script>
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let state = new Map();
-let winTriggered = new Set();
+let lastData = {};
 
 /* CONFETTI */
 function launchConfetti() {
-  for (let i = 0; i < 30; i++) {
+  const end = Date.now() + 1200;
+
+  (function frame() {
     const c = document.createElement("div");
     c.style.position = "fixed";
-    c.style.left = Math.random()*100+"vw";
+    c.style.left = Math.random() * 100 + "vw";
     c.style.top = "-10px";
     c.style.width = "6px";
     c.style.height = "10px";
-    c.style.background = "#ffd700";
+    c.style.background = ["#ffd700","#fff","#ffcc00"][Math.floor(Math.random()*3)];
+    c.style.zIndex = 9999;
     document.body.appendChild(c);
 
-    let y = 0;
     let fall = setInterval(() => {
-      y += 5;
-      c.style.top = y + "px";
-      if (y > window.innerHeight) {
+      c.style.top = (parseFloat(c.style.top) + 5) + "px";
+      if (parseFloat(c.style.top) > window.innerHeight) {
         c.remove();
         clearInterval(fall);
       }
     }, 16);
-  }
+
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
 }
 
-/* UPDATE WITHOUT REBUILD */
+/* LOAD */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
 
-  const json = JSON.parse(text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  const json = JSON.parse(
+    text.substring(text.indexOf("{"), text.lastIndexOf("}") + 1)
+  );
+
   const rows = json.table.rows;
 
   let players = rows.map(r => {
@@ -165,6 +183,7 @@ async function loadData() {
     };
   });
 
+  /* SORT */
   players.sort((a,b) => {
     if (a.isWin && !b.isWin) return -1;
     if (!a.isWin && b.isWin) return 1;
@@ -173,74 +192,68 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  const all = [...players.slice(0,4), ...players.slice(4,8)];
+  /* F1 ANIMATION (FLIP TECHNIQUE) */
+  const oldEls = {};
+  document.querySelectorAll(".player").forEach(el => {
+    const name = el.dataset.name;
+    oldEls[name] = el.getBoundingClientRect();
+  });
 
-  const col1 = document.getElementById("col1");
-  const col2 = document.getElementById("col2");
+  document.getElementById("col1").innerHTML = render(players.slice(0,4));
+  document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  updateColumn(col1, players.slice(0,4));
-  updateColumn(col2, players.slice(4,8));
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".player").forEach(el => {
+      const name = el.dataset.name;
+      const newPos = el.getBoundingClientRect();
+      const oldPos = oldEls[name];
 
+      if (oldPos) {
+        const dx = oldPos.left - newPos.left;
+        const dy = oldPos.top - newPos.top;
+
+        el.style.transform = `translate(${dx}px, ${dy}px) scale(1)`;
+        el.classList.add("moving");
+
+        requestAnimationFrame(() => {
+          el.style.transition = "transform 0.6s cubic-bezier(0.2,0.8,0.2,1)";
+          el.style.transform = "";
+        });
+
+        setTimeout(() => el.classList.remove("moving"), 600);
+      }
+    });
+  });
+
+  /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
-    const pointsEl = el.querySelector(".points");
-
-    /* WIN */
-    if (p.isWin) {
-      el.classList.add("win");
-
-      if (!winTriggered.has(p.name)) {
-        winTriggered.add(p.name);
-        launchConfetti();
-      }
-
-      pointsEl.textContent = "🏆 WIN";
-      return;
+    if (p.isWin && !lastData[p.name]) {
+      launchConfetti();
     }
 
-    /* 20+ */
-    if (p.points >= 20) {
-      el.classList.add("achieved20");
-    }
-
-    pointsEl.textContent = p.points;
+    lastData[p.name] = p.isWin;
   });
 }
 
-/* UPDATE DOM INSTEAD OF REBUILD */
-function updateColumn(container, players) {
-  const existing = new Map();
-  container.querySelectorAll(".player").forEach(el => {
-    existing.set(el.dataset.name, el);
-  });
+/* RENDER */
+function render(players) {
+  return players.map(p => `
+    <div class="player ${p.rank===1?'top1':''} ${p.isWin?'win':''}" data-name="${p.name}">
+      <div class="left">
+        <img class="avatar" src="${p.avatar}">
+        <span class="rank">#${p.rank}</span>
+        <span class="name">${p.name}</span>
+      </div>
 
-  players.forEach((p, i) => {
-    let el = existing.get(p.name);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.className = "player";
-      el.dataset.name = p.name;
-      el.innerHTML = `
-        <div class="left">
-          <img class="avatar" src="${p.avatar}">
-          <span class="rank">#${p.rank}</span>
-          <span class="name">${p.name}</span>
-        </div>
-        <div style="display:flex;align-items:center;">
-          <span class="crown">👑</span>
-          <span class="points"></span>
-        </div>
-      `;
-      container.appendChild(el);
-    }
-
-    container.appendChild(el); // reorder without flicker
-
-    el.querySelector(".rank").textContent = "#" + p.rank;
-  });
+      <div style="display:flex; align-items:center;">
+        <span class="crown">👑</span>
+        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
+      </div>
+    </div>
+  `).join("");
 }
 
 loadData();
