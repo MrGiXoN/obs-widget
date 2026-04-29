@@ -69,7 +69,7 @@ body {
 }
 
 /* =========================
-   NAME (POPRAWIONA CZCIONKA)
+   NAME (BEBAS FIX + STABILIZACJA)
 ========================= */
 .name {
   font-size: 16px;
@@ -77,15 +77,15 @@ body {
   letter-spacing: 1.5px;
   text-transform: uppercase;
 
-  display: inline-flex;
-  align-items: center;
-  transform: translateY(1px); /* 🔧 wyrównanie tekstu */
+  line-height: 1;
+  position: relative;
+  top: 1px;
 
   color: #eaeaf0;
 }
 
 /* =========================
-   TOP 1 GLOW + SHINE
+   TOP 1 STYLE
 ========================= */
 .player.top1 .name {
   font-size: 18px;
@@ -105,14 +105,13 @@ body {
     0 0 30px rgba(255,215,0,0.4);
 }
 
-/* animacja shine */
 @keyframes shine {
   0% { background-position: 0% center; }
   100% { background-position: 200% center; }
 }
 
 /* =========================
-   🔥 ANIMACJA WYPRZEDZENIA
+   🔥 WYPRZEDZENIE ANIMATION
 ========================= */
 .player.overtake {
   animation: goldFlash 0.9s ease;
@@ -140,7 +139,7 @@ body {
   color: #facc15;
 }
 
-/* UPDATE FLASH */
+/* UPDATE */
 .player.updated {
   animation: flash 0.4s;
 }
@@ -151,7 +150,7 @@ body {
   100% { transform: scale(1); }
 }
 
-/* LEADER BORDER */
+/* TOP1 border */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.6);
   box-shadow: 0 0 15px rgba(255,215,0,0.4);
@@ -224,25 +223,31 @@ async function loadData() {
   document.getElementById("col2").innerHTML = renderColumn(col2);
 
   /* =========================
-     🔥 WYPRZEDZENIE (TOP1 CHANGE)
+     🔥 FIXED OVERTAKE LOGIC
   ========================= */
-  if (players[0] && players[0].name !== lastLeader) {
-    const el = document.querySelector(`[data-name="${players[0].name}"]`);
+  const newLeader = players[0]?.name;
+  const oldLeader = lastLeader;
 
-    if (el) {
-      el.classList.add("overtake");
+  if (newLeader && newLeader !== oldLeader) {
 
-      setTimeout(() => {
-        el.classList.remove("overtake");
-      }, 900);
+    const newEl = document.querySelector(`[data-name="${newLeader}"]`);
+    if (newEl) {
+      newEl.classList.add("overtake");
+      setTimeout(() => newEl.classList.remove("overtake"), 900);
     }
 
-    lastLeader = players[0].name;
+    if (oldLeader) {
+      const oldEl = document.querySelector(`[data-name="${oldLeader}"]`);
+      if (oldEl) {
+        oldEl.classList.add("overtake");
+        setTimeout(() => oldEl.classList.remove("overtake"), 900);
+      }
+    }
+
+    lastLeader = newLeader;
   }
 
-  /* =========================
-     🎯 POINTS ANIMATION
-  ========================= */
+  /* POINTS ANIMATION */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
