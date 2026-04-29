@@ -38,7 +38,6 @@ body {
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-  transition: 0.3s;
   position: relative;
 }
 
@@ -74,33 +73,33 @@ body {
   color: #facc15;
 }
 
-/* =======================
-   🥇 TOP 1 (STABILNY PULS)
-======================= */
+/* =========================
+   🥇 TOP 1 (STABILNA ANIMACJA)
+========================= */
+
+/* NIE ANIMUJEMY PLAYERA */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
   box-shadow: 0 0 25px rgba(255,215,0,0.6);
+}
+
+/* OSOBNA WARSTWA ANIMACJI */
+.top1-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: 10px;
+  pointer-events: none;
   animation: topPulse 1.6s ease-in-out infinite;
-  transform-origin: center;
-  will-change: transform, box-shadow;
+  box-shadow: 0 0 25px rgba(255,215,0,0.6);
 }
 
 @keyframes topPulse {
-  0% {
-    transform: translateZ(0) scale(1);
-    box-shadow: 0 0 15px rgba(255,215,0,0.3);
-  }
-  50% {
-    transform: translateZ(0) scale(1.03);
-    box-shadow: 0 0 35px rgba(255,215,0,0.9);
-  }
-  100% {
-    transform: translateZ(0) scale(1);
-    box-shadow: 0 0 15px rgba(255,215,0,0.3);
-  }
+  0%   { transform: scale(1); opacity: 0.5; }
+  50%  { transform: scale(1.02); opacity: 1; }
+  100% { transform: scale(1); opacity: 0.5; }
 }
 
-/* TOP1 NAME SHINE */
+/* NAME SHINE */
 .player.top1 .name {
   background: linear-gradient(90deg, #fff, #ffd86b, #fff);
   background-size: 200% auto;
@@ -114,7 +113,7 @@ body {
   100% { background-position: 200% center; }
 }
 
-/* 👑 CORONA (STATYCZNA) */
+/* 👑 CORONA */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -175,7 +174,7 @@ function launchConfetti() {
   })();
 }
 
-/* LOAD DATA */
+/* LOAD */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -209,7 +208,7 @@ async function loadData() {
   updateColumn("col1", players.slice(0,4));
   updateColumn("col2", players.slice(4,8));
 
-  /* TOP1 + WIN */
+  /* TOP1 CHANGE */
   const leader = players[0]?.name;
 
   if (leader && leader !== lastLeader) {
@@ -221,6 +220,7 @@ async function loadData() {
     lastLeader = leader;
   }
 
+  /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
@@ -232,7 +232,7 @@ async function loadData() {
   });
 }
 
-/* SAFE UPDATE (NO ANIMATION RESET) */
+/* STABILNY UPDATE (NO ANIMATION RESET) */
 function updateColumn(id, players) {
   const container = document.getElementById(id);
 
@@ -250,6 +250,8 @@ function updateColumn(id, players) {
       el.dataset.name = p.name;
 
       el.innerHTML = `
+        <div class="top1-glow"></div>
+
         <div class="left">
           <img class="avatar" src="${p.avatar}">
           <span class="rank">#${p.rank}</span>
@@ -265,7 +267,7 @@ function updateColumn(id, players) {
       container.appendChild(el);
     }
 
-    container.appendChild(el); // reorder bez resetu
+    container.appendChild(el);
 
     el.querySelector(".rank").textContent = "#" + p.rank;
 
