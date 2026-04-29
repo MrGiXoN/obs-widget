@@ -38,7 +38,8 @@ body {
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  transition: 0.3s;
+  position: relative;
 }
 
 /* LEFT */
@@ -73,20 +74,33 @@ body {
   color: #facc15;
 }
 
-/* TOP1 */
+/* =======================
+   🥇 TOP 1 (STABILNY PULS)
+======================= */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
   box-shadow: 0 0 25px rgba(255,215,0,0.6);
-  animation: topPulse 1.6s infinite ease-in-out;
+  animation: topPulse 1.6s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform, box-shadow;
 }
 
 @keyframes topPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+  0% {
+    transform: translateZ(0) scale(1);
+    box-shadow: 0 0 15px rgba(255,215,0,0.3);
+  }
+  50% {
+    transform: translateZ(0) scale(1.03);
+    box-shadow: 0 0 35px rgba(255,215,0,0.9);
+  }
+  100% {
+    transform: translateZ(0) scale(1);
+    box-shadow: 0 0 15px rgba(255,215,0,0.3);
+  }
 }
 
-/* SHINE */
+/* TOP1 NAME SHINE */
 .player.top1 .name {
   background: linear-gradient(90deg, #fff, #ffd86b, #fff);
   background-size: 200% auto;
@@ -100,7 +114,7 @@ body {
   100% { background-position: 200% center; }
 }
 
-/* CORONA */
+/* 👑 CORONA (STATYCZNA) */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -110,15 +124,10 @@ body {
   opacity: 1;
 }
 
-/* WIN */
+/* 🏆 WIN */
 .player.win {
   border: 1px solid #ffd700;
   box-shadow: 0 0 40px rgba(255,215,0,1);
-}
-
-/* MOVE EFFECT (bez DOM chaosu) */
-.player.flash {
-  transform: scale(1.02);
 }
 </style>
 </head>
@@ -134,12 +143,14 @@ body {
 
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let lastLeader = null;
 let winTriggered = {};
+let lastLeader = null;
 
 /* CONFETTI */
 function launchConfetti() {
-  for (let i = 0; i < 20; i++) {
+  const end = Date.now() + 1200;
+
+  (function frame() {
     const c = document.createElement("div");
     c.style.position = "fixed";
     c.style.left = Math.random() * 100 + "vw";
@@ -159,10 +170,12 @@ function launchConfetti() {
         clearInterval(fall);
       }
     }, 16);
-  }
+
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
 }
 
-/* LOAD */
+/* LOAD DATA */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -184,6 +197,7 @@ async function loadData() {
     };
   });
 
+  /* SORT */
   players.sort((a,b) => {
     if (a.isWin && !b.isWin) return -1;
     if (!a.isWin && b.isWin) return 1;
@@ -192,30 +206,17 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  render(players);
-}
+  updateColumn("col1", players.slice(0,4));
+  updateColumn("col2", players.slice(4,8));
 
-/* SAFE RENDER (NO DUPLICATES VERSION 100% STABLE) */
-function render(players) {
-  const col1 = document.getElementById("col1");
-  const col2 = document.getElementById("col2");
-
-  col1.innerHTML = "";
-  col2.innerHTML = "";
-
-  const c1 = players.slice(0,4);
-  const c2 = players.slice(4,8);
-
-  drawColumn(c1, col1);
-  drawColumn(c2, col2);
-
+  /* TOP1 + WIN */
   const leader = players[0]?.name;
 
   if (leader && leader !== lastLeader) {
     const el = document.querySelector(`[data-name="${leader}"]`);
     if (el) {
-      el.classList.add("flash");
-      setTimeout(() => el.classList.remove("flash"), 400);
+      el.classList.add("powerup");
+      setTimeout(() => el.classList.remove("powerup"), 800);
     }
     lastLeader = leader;
   }
@@ -224,51 +225,68 @@ function render(players) {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
+    if (p.isWin && !winTriggered[p.name]) {
+      winTriggered[p.name] = true;
+      launchConfetti();
+    }
+  });
+}
+
+/* SAFE UPDATE (NO ANIMATION RESET) */
+function updateColumn(id, players) {
+  const container = document.getElementById(id);
+
+  const existing = new Map();
+  container.querySelectorAll(".player").forEach(el => {
+    existing.set(el.dataset.name, el);
+  });
+
+  players.forEach(p => {
+    let el = existing.get(p.name);
+
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "player";
+      el.dataset.name = p.name;
+
+      el.innerHTML = `
+        <div class="left">
+          <img class="avatar" src="${p.avatar}">
+          <span class="rank">#${p.rank}</span>
+          <span class="name">${p.name}</span>
+        </div>
+
+        <div style="display:flex; align-items:center;">
+          <span class="crown">👑</span>
+          <span class="points"></span>
+        </div>
+      `;
+
+      container.appendChild(el);
+    }
+
+    container.appendChild(el); // reorder bez resetu
+
+    el.querySelector(".rank").textContent = "#" + p.rank;
+
     const pointsEl = el.querySelector(".points");
 
     if (p.isWin) {
       el.classList.add("win");
-
-      if (!winTriggered[p.name]) {
-        winTriggered[p.name] = true;
-        launchConfetti();
-      }
-
       pointsEl.textContent = "🏆 WIN";
-      return;
+    } else {
+      pointsEl.textContent = p.points;
+    }
+
+    if (p.rank === 1) {
+      el.classList.add("top1");
+    } else {
+      el.classList.remove("top1");
     }
 
     if (p.points >= 20) {
       el.classList.add("achieved20");
     }
-
-    pointsEl.textContent = p.points;
-  });
-}
-
-/* DRAW */
-function drawColumn(players, container) {
-  players.forEach(p => {
-    const el = document.createElement("div");
-    el.className = "player";
-    el.dataset.name = p.name;
-
-    el.innerHTML = `
-      <div class="left">
-        <img class="avatar" src="${p.avatar}">
-        <span class="rank">#${p.rank}</span>
-        <span class="name">${p.name}</span>
-      </div>
-
-      <div style="display:flex; align-items:center;">
-        <span class="crown">👑</span>
-        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
-      </div>
-    `;
-
-    if (p.rank === 1) el.classList.add("top1");
-
-    container.appendChild(el);
   });
 }
 
