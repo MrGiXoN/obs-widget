@@ -28,6 +28,7 @@ body {
   border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
+/* PLAYER */
 .player {
   display: flex;
   justify-content: space-between;
@@ -38,6 +39,7 @@ body {
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
   transition: 0.3s;
+  position: relative;
 }
 
 /* LEFT */
@@ -64,8 +66,6 @@ body {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 16px;
   letter-spacing: 1.5px;
-  position: relative;
-  top: 1px;
 }
 
 /* POINTS */
@@ -74,42 +74,73 @@ body {
   color: #facc15;
 }
 
-/* 🥇 TOP1 */
+/* =======================
+   🥇 TOP 1 (GL0W + PULSE)
+======================= */
 .player.top1 {
-  border: 1px solid rgba(255,215,0,0.6);
-  box-shadow: 0 0 15px rgba(255,215,0,0.4);
+  border: 1px solid rgba(255,215,0,0.9);
+  box-shadow: 0 0 25px rgba(255,215,0,0.6);
+  animation: topPulse 1.5s infinite ease-in-out;
+}
+
+@keyframes topPulse {
+  0%   { transform: scale(1); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
+  50%  { transform: scale(1.03); box-shadow: 0 0 35px rgba(255,215,0,0.9); }
+  100% { transform: scale(1); box-shadow: 0 0 15px rgba(255,215,0,0.4); }
+}
+
+/* NAME SHINE TOP1 */
+.player.top1 .name {
+  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* =======================
+   👑 CORONA 20+
+======================= */
+.crown {
+  opacity: 0;
+  transform: scale(0);
+  margin: 0 6px;
+  display: inline-block;
+}
+
+.player.achieved20 .crown {
+  animation: crownIn 0.4s forwards, crownPulse 1.2s infinite ease-in-out;
+}
+
+@keyframes crownIn {
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes crownPulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 0px gold); }
+  50% { transform: scale(1.15); filter: drop-shadow(0 0 10px gold); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 0px gold); }
 }
 
 /* 🏆 WIN */
 .player.win {
   border: 1px solid #ffd700;
-  box-shadow: 0 0 35px rgba(255,215,0,1);
-  animation: winPulse 1s infinite alternate;
-}
-
-@keyframes winPulse {
-  0% { transform: scale(1); }
-  100% { transform: scale(1.03); }
-}
-
-/* 👑 20 POINTS */
-.crown {
-  display: none;
-  margin: 0 6px;
-}
-
-.player.achieved20 .crown {
-  display: inline-block;
+  box-shadow: 0 0 40px rgba(255,215,0,1);
 }
 
 /* POWERUP */
 .player.powerup {
-  animation: powerUp 0.9s ease;
+  animation: powerUp 0.8s ease;
 }
 
 @keyframes powerUp {
   0% { transform: scale(1); }
-  40% { transform: scale(1.08); }
+  50% { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
 </style>
@@ -126,7 +157,7 @@ const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-
 
 let lastLeader = null;
 let winTriggered = {};
-let last20 = {};
+let crownState = {};
 
 /* 🎉 CONFETTI */
 function launchConfetti() {
@@ -177,7 +208,7 @@ async function loadData() {
     };
   });
 
-  /* ❗ WIN zawsze na górze */
+  /* sort: WIN always top */
   players.sort((a,b) => {
     if (a.isWin && !b.isWin) return -1;
     if (!a.isWin && b.isWin) return 1;
@@ -189,16 +220,15 @@ async function loadData() {
   document.getElementById("col1").innerHTML = render(players.slice(0,4));
   document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  /* LEADER */
-  const newLeader = players[0]?.name;
-
-  if (newLeader && newLeader !== lastLeader) {
-    const el = document.querySelector(`[data-name="${newLeader}"]`);
+  /* TOP1 */
+  const leader = players[0]?.name;
+  if (leader && leader !== lastLeader) {
+    const el = document.querySelector(`[data-name="${leader}"]`);
     if (el) {
       el.classList.add("powerup");
-      setTimeout(() => el.classList.remove("powerup"), 900);
+      setTimeout(() => el.classList.remove("powerup"), 800);
     }
-    lastLeader = newLeader;
+    lastLeader = leader;
   }
 
   /* LOGIC */
@@ -207,8 +237,9 @@ async function loadData() {
     if (!el) return;
 
     const pointsEl = el.querySelector(".points");
+    const crown = el.querySelector(".crown");
 
-    /* 🏆 WIN */
+    /* WIN */
     if (p.isWin) {
       el.classList.add("win");
 
@@ -221,18 +252,15 @@ async function loadData() {
       return;
     }
 
-    /* 👑 20 POINTS */
+    /* 20+ POINTS */
     if (p.points >= 20) {
       el.classList.add("achieved20");
 
-      if (!last20[p.name]) {
-        el.classList.add("powerup");
-        setTimeout(() => el.classList.remove("powerup"), 900);
-        last20[p.name] = true;
+      if (crown && !crownState[p.name]) {
+        crownState[p.name] = true;
+        crown.style.opacity = "1";
+        crown.style.transform = "scale(1)";
       }
-
-      const crown = el.querySelector(".crown");
-      if (crown) crown.style.display = "inline-block";
     }
 
     pointsEl.textContent = p.points;
