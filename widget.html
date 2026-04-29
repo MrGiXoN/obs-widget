@@ -11,7 +11,6 @@ body {
   font-family: 'Segoe UI', sans-serif;
   background: transparent;
   color: #eaeaf0;
-  overflow: hidden;
 }
 
 .container {
@@ -61,12 +60,14 @@ body {
   color: #aaa;
 }
 
+/* NAME */
 .name {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 16px;
   letter-spacing: 1.5px;
 }
 
+/* POINTS */
 .points {
   font-weight: bold;
   color: #facc15;
@@ -85,7 +86,7 @@ body {
   100% { transform: scale(1); }
 }
 
-/* NAME SHINE */
+/* SHINE */
 .player.top1 .name {
   background: linear-gradient(90deg, #fff, #ffd86b, #fff);
   background-size: 200% auto;
@@ -103,7 +104,6 @@ body {
 .crown {
   opacity: 0;
   margin: 0 6px;
-  transition: 0.3s;
 }
 
 .player.achieved20 .crown {
@@ -116,8 +116,8 @@ body {
   box-shadow: 0 0 40px rgba(255,215,0,1);
 }
 
-/* MOVE */
-.player.moving {
+/* MOVE EFFECT (bez DOM chaosu) */
+.player.flash {
   transform: scale(1.02);
 }
 </style>
@@ -134,12 +134,12 @@ body {
 
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let winTriggered = {};
 let lastLeader = null;
+let winTriggered = {};
 
 /* CONFETTI */
 function launchConfetti() {
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 20; i++) {
     const c = document.createElement("div");
     c.style.position = "fixed";
     c.style.left = Math.random() * 100 + "vw";
@@ -192,22 +192,34 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  render(players.slice(0,4), "col1");
-  render(players.slice(4,8), "col2");
+  render(players);
+}
 
-  /* TOP1 */
+/* SAFE RENDER (NO DUPLICATES VERSION 100% STABLE) */
+function render(players) {
+  const col1 = document.getElementById("col1");
+  const col2 = document.getElementById("col2");
+
+  col1.innerHTML = "";
+  col2.innerHTML = "";
+
+  const c1 = players.slice(0,4);
+  const c2 = players.slice(4,8);
+
+  drawColumn(c1, col1);
+  drawColumn(c2, col2);
+
   const leader = players[0]?.name;
 
   if (leader && leader !== lastLeader) {
     const el = document.querySelector(`[data-name="${leader}"]`);
     if (el) {
-      el.classList.add("moving");
-      setTimeout(() => el.classList.remove("moving"), 400);
+      el.classList.add("flash");
+      setTimeout(() => el.classList.remove("flash"), 400);
     }
     lastLeader = leader;
   }
 
-  /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
@@ -234,24 +246,12 @@ async function loadData() {
   });
 }
 
-/* SAFE RENDER (NO RESET DOM) */
-function render(players, colId) {
-  const container = document.getElementById(colId);
-
-  const existing = new Map();
-  container.querySelectorAll(".player").forEach(el => {
-    existing.set(el.dataset.name, el);
-  });
-
+/* DRAW */
+function drawColumn(players, container) {
   players.forEach(p => {
-    let el = existing.get(p.name);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.className = "player";
-      el.dataset.name = p.name;
-      container.appendChild(el);
-    }
+    const el = document.createElement("div");
+    el.className = "player";
+    el.dataset.name = p.name;
 
     el.innerHTML = `
       <div class="left">
@@ -262,12 +262,13 @@ function render(players, colId) {
 
       <div style="display:flex; align-items:center;">
         <span class="crown">👑</span>
-        <span class="points"></span>
+        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
       </div>
     `;
 
     if (p.rank === 1) el.classList.add("top1");
-    else el.classList.remove("top1");
+
+    container.appendChild(el);
   });
 }
 
