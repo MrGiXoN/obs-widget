@@ -12,20 +12,19 @@ body {
 
 /* PANEL */
 .container {
-  width: 400px;
-  padding: 16px;
+  width: 820px;
+  display: flex;
+  gap: 20px;
+}
+
+/* KOLUMNY */
+.column {
+  flex: 1;
+  padding: 14px;
   border-radius: 14px;
   background: rgba(12, 14, 20, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
-}
-
-/* TITLE */
-.title {
-  font-size: 15px;
-  margin-bottom: 12px;
-  font-weight: 600;
-  color: #facc15;
 }
 
 /* PLAYER */
@@ -47,7 +46,7 @@ body {
   box-shadow: 0 0 15px rgba(255,215,0,0.4);
 }
 
-/* 🔥 NOWY LIDER */
+/* NOWY LIDER */
 .player.newLeader {
   animation: leaderEnter 0.8s ease;
 }
@@ -76,7 +75,7 @@ body {
 
 /* RANK */
 .rank {
-  width: 24px;
+  width: 28px;
   text-align: center;
   font-weight: bold;
   color: #aaa;
@@ -88,7 +87,7 @@ body {
   transition: 0.3s;
 }
 
-/* 🔥 LEADER NAME */
+/* LEADER NAME */
 .player.top1 .name {
   font-size: 16px;
   font-weight: 700;
@@ -118,8 +117,8 @@ body {
 
 <body>
 <div class="container">
-  <div class="title">Tactician Master Series</div>
-  <div id="board">Loading...</div>
+  <div class="column" id="col1"></div>
+  <div class="column" id="col2"></div>
 </div>
 
 <script>
@@ -142,6 +141,19 @@ function animateNumber(el, start, end) {
   requestAnimationFrame(update);
 }
 
+function renderColumn(players) {
+  return players.map((p,i) => `
+    <div class="player ${p.rank===1?'top1':''}" data-name="${p.name}">
+      <div class="left">
+        <img class="avatar" src="${p.avatar}">
+        <span class="rank">#${p.rank}</span>
+        <span class="name">${p.name}</span>
+      </div>
+      <div class="points">${p.points}</div>
+    </div>
+  `).join("");
+}
+
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -160,31 +172,30 @@ async function loadData() {
 
   players.sort((a,b) => b.points - a.points);
 
-  const board = document.getElementById("board");
+  // dodaj ranking
+  players.forEach((p,i) => p.rank = i+1);
 
-  board.innerHTML = players.map((p,i) => `
-    <div class="player ${i===0?'top1':''}" data-name="${p.name}">
-      <div class="left">
-        <img class="avatar" src="${p.avatar}">
-        <span class="rank">#${i+1}</span>
-        <span class="name">${p.name}</span>
-      </div>
-      <div class="points">${p.points}</div>
-    </div>
-  `).join("");
+  const col1 = players.slice(0,4);
+  const col2 = players.slice(4,8);
 
-  // 🔥 NOWY LIDER
+  document.getElementById("col1").innerHTML = renderColumn(col1);
+  document.getElementById("col2").innerHTML = renderColumn(col2);
+
+  // 🔥 nowy lider
   if (players[0] && players[0].name !== lastLeader) {
-    const newLeaderEl = document.querySelector(`[data-name="${players[0].name}"]`);
-    if (newLeaderEl) {
-      newLeaderEl.classList.add("newLeader");
-      setTimeout(() => newLeaderEl.classList.remove("newLeader"), 800);
+    const el = document.querySelector(`[data-name="${players[0].name}"]`);
+    if (el) {
+      el.classList.add("newLeader");
+      setTimeout(() => el.classList.remove("newLeader"), 800);
     }
     lastLeader = players[0].name;
   }
 
+  // 🎯 animacja punktów
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
+    if (!el) return;
+
     const pointsEl = el.querySelector(".points");
 
     if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
