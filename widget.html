@@ -14,10 +14,12 @@ body {
   overflow: hidden;
 }
 
+/* FIX: stabilny layout */
 .container {
   width: 820px;
   display: flex;
   gap: 20px;
+  align-items: flex-start;
 }
 
 .column {
@@ -25,9 +27,11 @@ body {
   padding: 14px;
   border-radius: 14px;
   background: rgba(12, 14, 20, 0.85);
-  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
-  min-height: 500px;
+
+  /* 🔥 FIX: blokuje rozciąganie */
+  height: 420px;
+  overflow: hidden;
 }
 
 /* PLAYER */
@@ -35,15 +39,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+
   padding: 10px 12px;
   margin: 8px 0;
+
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
 
-  transition: transform 0.6s cubic-bezier(0.2,0.8,0.2,1),
-              box-shadow 0.4s ease;
-  will-change: transform;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
+  box-sizing: border-box; /* 🔥 FIX */
 }
 
 /* LEFT */
@@ -51,18 +56,21 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .avatar {
   width: 34px;
   height: 34px;
   border-radius: 6px;
+  flex-shrink: 0;
 }
 
 .rank {
   width: 28px;
   text-align: center;
   color: #aaa;
+  flex-shrink: 0;
 }
 
 /* NAME */
@@ -70,42 +78,23 @@ body {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 16px;
   letter-spacing: 1.5px;
+  white-space: nowrap;
 }
 
 /* POINTS */
 .points {
   font-weight: bold;
   color: #facc15;
+  flex-shrink: 0;
 }
 
-/* 🥇 TOP 1 */
+/* 🥇 TOP1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
-  box-shadow: 0 0 30px rgba(255,215,0,0.6);
-  animation: topPulse 1.6s infinite ease-in-out;
+  box-shadow: 0 0 20px rgba(255,215,0,0.6);
 }
 
-@keyframes topPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
-}
-
-/* NAME SHINE */
-.player.top1 .name {
-  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shine 2s linear infinite;
-}
-
-@keyframes shine {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-
-/* 👑 CORONA (STATYCZNA) */
+/* 👑 CORONA (STATIC) */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -118,12 +107,11 @@ body {
 /* 🏆 WIN */
 .player.win {
   border: 1px solid #ffd700;
-  box-shadow: 0 0 40px rgba(255,215,0,1);
+  box-shadow: 0 0 25px rgba(255,215,0,0.9);
 }
 
-/* MOVE ANIMATION */
+/* smooth movement placeholder */
 .player.moving {
-  z-index: 10;
   transform: scale(1.02);
 }
 </style>
@@ -144,20 +132,20 @@ let winTriggered = new Set();
 
 /* CONFETTI */
 function launchConfetti() {
-  const end = Date.now() + 1000;
-
-  (function frame() {
+  for (let i = 0; i < 20; i++) {
     const c = document.createElement("div");
     c.style.position = "fixed";
-    c.style.left = Math.random()*100+"vw";
+    c.style.left = Math.random() * 100 + "vw";
     c.style.top = "-10px";
     c.style.width = "6px";
     c.style.height = "10px";
     c.style.background = "#ffd700";
+    c.style.zIndex = 9999;
+
     document.body.appendChild(c);
 
     let y = 0;
-    let fall = setInterval(() => {
+    const fall = setInterval(() => {
       y += 5;
       c.style.top = y + "px";
       if (y > window.innerHeight) {
@@ -165,12 +153,10 @@ function launchConfetti() {
         clearInterval(fall);
       }
     }, 16);
-
-    if (Date.now() < end) requestAnimationFrame(frame);
-  })();
+  }
 }
 
-/* MAIN LOAD */
+/* LOAD */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -201,10 +187,10 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  updateColumn("col1", players.slice(0,4));
-  updateColumn("col2", players.slice(4,8));
+  renderColumn("col1", players.slice(0,4));
+  renderColumn("col2", players.slice(4,8));
 
-  /* WIN */
+  /* WIN LOGIC */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
@@ -216,45 +202,33 @@ async function loadData() {
   });
 }
 
-/* FLUID UPDATE (NO RESET DOM) */
-function updateColumn(id, players) {
+/* SAFE RENDER (NO DOM BREAKING) */
+function renderColumn(id, players) {
   const container = document.getElementById(id);
 
-  const old = new Map();
+  container.innerHTML = players.map(p => `
+    <div class="player ${p.rank===1?'top1':''} ${p.isWin?'win':''}" data-name="${p.name}">
+      <div class="left">
+        <img class="avatar" src="${p.avatar}">
+        <span class="rank">#${p.rank}</span>
+        <span class="name">${p.name}</span>
+      </div>
+
+      <div style="display:flex; align-items:center;">
+        <span class="crown">👑</span>
+        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
+      </div>
+    </div>
+  `).join("");
+
+  /* 20+ AFTER RENDER */
   container.querySelectorAll(".player").forEach(el => {
-    old.set(el.dataset.name, el);
-  });
+    const pointsText = el.querySelector(".points").textContent;
+    const val = parseInt(pointsText);
 
-  players.forEach(p => {
-    let el = old.get(p.name);
-
-    if (!el) {
-      el = document.createElement("div");
-      el.className = "player";
-      el.dataset.name = p.name;
-
-      el.innerHTML = `
-        <div class="left">
-          <img class="avatar" src="${p.avatar}">
-          <span class="rank">#${p.rank}</span>
-          <span class="name">${p.name}</span>
-        </div>
-        <div style="display:flex; align-items:center;">
-          <span class="crown">👑</span>
-          <span class="points"></span>
-        </div>
-      `;
-
-      container.appendChild(el);
+    if (!isNaN(val) && val >= 20) {
+      el.classList.add("achieved20");
     }
-
-    container.appendChild(el);
-
-    el.querySelector(".rank").textContent = "#" + p.rank;
-    el.querySelector(".points").textContent = p.isWin ? "🏆 WIN" : p.points;
-
-    if (p.isWin) el.classList.add("win");
-    if (p.points >= 20) el.classList.add("achieved20");
   });
 }
 
@@ -262,5 +236,6 @@ loadData();
 setInterval(loadData, 2500);
 
 </script>
+
 </body>
 </html>
