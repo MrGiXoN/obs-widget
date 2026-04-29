@@ -11,6 +11,7 @@ body {
   font-family: 'Segoe UI', sans-serif;
   background: transparent;
   color: #eaeaf0;
+  overflow: hidden;
 }
 
 .container {
@@ -26,8 +27,6 @@ body {
   background: rgba(12, 14, 20, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
-
-  min-height: 400px;
 }
 
 /* PLAYER */
@@ -35,18 +34,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   padding: 10px 12px;
   margin: 8px 0;
-
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
 
-  position: relative;
-
-  transition: transform 0.6s ease, box-shadow 0.6s ease;
-  will-change: transform;
+  transition: transform 0.5s ease;
 }
 
 /* LEFT */
@@ -68,33 +62,29 @@ body {
   color: #aaa;
 }
 
-/* NAME */
 .name {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 16px;
   letter-spacing: 1.5px;
 }
 
-/* POINTS */
 .points {
   font-weight: bold;
   color: #facc15;
 }
 
-/* 🥇 TOP 1 */
+/* TOP1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
   box-shadow: 0 0 25px rgba(255,215,0,0.6);
-  animation: topPulse 1.6s infinite ease-in-out;
 }
 
-@keyframes topPulse {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
-  100% { transform: scale(1); }
+/* MOVE ANIMATION */
+.player.moving {
+  transform: translateY(0);
 }
 
-/* 👑 CORONA */
+/* CORONA */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -102,17 +92,6 @@ body {
 
 .player.achieved20 .crown {
   opacity: 1;
-}
-
-/* 🏆 WIN */
-.player.win {
-  border: 1px solid #ffd700;
-  box-shadow: 0 0 40px rgba(255,215,0,1);
-}
-
-/* MOVE ANIMATION (FLIP) */
-.player.moving {
-  transition: transform 0.6s ease;
 }
 </style>
 </head>
@@ -128,14 +107,11 @@ body {
 
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let lastLeader = null;
 let winTriggered = {};
 
 /* CONFETTI */
 function launchConfetti() {
-  const end = Date.now() + 1200;
-
-  (function frame() {
+  for (let i = 0; i < 20; i++) {
     const c = document.createElement("div");
     c.style.position = "fixed";
     c.style.left = Math.random() * 100 + "vw";
@@ -155,31 +131,7 @@ function launchConfetti() {
         clearInterval(fall);
       }
     }, 16);
-
-    if (Date.now() < end) requestAnimationFrame(frame);
-  })();
-}
-
-/* FLIP ANIMATION SYSTEM */
-function moveElement(el, toContainer) {
-  const first = el.getBoundingClientRect();
-
-  toContainer.appendChild(el);
-
-  const last = el.getBoundingClientRect();
-
-  const deltaY = first.top - last.top;
-
-  el.style.transform = `translateY(${deltaY}px)`;
-
-  requestAnimationFrame(() => {
-    el.classList.add("moving");
-    el.style.transform = "translateY(0)";
-  });
-
-  setTimeout(() => {
-    el.classList.remove("moving");
-  }, 600);
+  }
 }
 
 /* LOAD */
@@ -215,18 +167,6 @@ async function loadData() {
   render(players.slice(0,4), "col1");
   render(players.slice(4,8), "col2");
 
-  /* TOP1 */
-  const leader = players[0]?.name;
-
-  if (leader && leader !== lastLeader) {
-    const el = document.querySelector(`[data-name="${leader}"]`);
-    if (el) {
-      el.classList.add("powerup");
-      setTimeout(() => el.classList.remove("powerup"), 800);
-    }
-    lastLeader = leader;
-  }
-
   /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
@@ -239,48 +179,45 @@ async function loadData() {
   });
 }
 
-/* RENDER + FLIP MOVE */
+/* SAFE RENDER (NO DUPLICATES) */
 function render(players, colId) {
   const container = document.getElementById(colId);
 
-  const existing = new Map();
+  const old = new Map();
   container.querySelectorAll(".player").forEach(el => {
-    existing.set(el.dataset.name, el);
+    old.set(el.dataset.name, el);
   });
 
+  container.innerHTML = "";
+
   players.forEach(p => {
-    let el = existing.get(p.name);
+    let el = old.get(p.name);
 
     if (!el) {
       el = document.createElement("div");
       el.className = "player";
       el.dataset.name = p.name;
-
-      el.innerHTML = `
-        <div class="left">
-          <img class="avatar" src="${p.avatar}">
-          <span class="rank">#${p.rank}</span>
-          <span class="name">${p.name}</span>
-        </div>
-
-        <div style="display:flex; align-items:center;">
-          <span class="crown">👑</span>
-          <span class="points"></span>
-        </div>
-      `;
-
-      container.appendChild(el);
     }
 
-    moveElement(el, container);
+    el.innerHTML = `
+      <div class="left">
+        <img class="avatar" src="${p.avatar}">
+        <span class="rank">#${p.rank}</span>
+        <span class="name">${p.name}</span>
+      </div>
 
-    el.querySelector(".rank").textContent = "#" + p.rank;
-    el.querySelector(".points").textContent = p.isWin ? "🏆 WIN" : p.points;
+      <div style="display:flex; align-items:center;">
+        <span class="crown">👑</span>
+        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
+      </div>
+    `;
 
     if (p.rank === 1) el.classList.add("top1");
     else el.classList.remove("top1");
 
     if (p.points >= 20) el.classList.add("achieved20");
+
+    container.appendChild(el);
   });
 }
 
