@@ -5,75 +5,80 @@
 <style>
 body {
   margin: 0;
-  font-family: Inter, Segoe UI, sans-serif;
+  font-family: 'Segoe UI', sans-serif;
   background: transparent;
   color: #eaeaf0;
 }
 
-/* 🔥 PANEL */
+/* PANEL */
 .container {
-  width: 380px;
-  padding: 18px;
-  border-radius: 18px;
-  background: rgba(10, 10, 20, 0.7);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(170, 0, 255, 0.2);
-  box-shadow: 
-    0 0 40px rgba(140, 0, 255, 0.25),
-    inset 0 0 30px rgba(255,255,255,0.02);
+  width: 400px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(12, 14, 20, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 215, 0, 0.15);
+  box-shadow: 0 0 25px rgba(0,0,0,0.6);
 }
 
-/* 🏆 TITLE */
+/* TITLE */
 .title {
-  font-size: 16px;
-  letter-spacing: 1px;
+  font-size: 15px;
   margin-bottom: 12px;
   font-weight: 600;
-  color: #c084fc;
+  color: #facc15;
+  letter-spacing: 1px;
 }
 
-/* 👤 ROW */
+/* PLAYER CARD */
 .player {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 6px;
-  border-bottom: 1px solid rgba(140,0,255,0.15);
+  padding: 10px 12px;
+  margin: 8px 0;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: inset 0 0 10px rgba(255,255,255,0.02);
   transition: 0.3s;
 }
 
-.player:last-child {
-  border-bottom: none;
+/* HOVER subtle */
+.player:hover {
+  background: rgba(255,255,255,0.05);
 }
 
-/* 🥇 TOP 1 */
+/* TOP 1 */
 .player.top1 {
-  color: #facc15;
-  text-shadow: 0 0 8px rgba(255,215,0,0.6);
+  border: 1px solid rgba(255,215,0,0.6);
+  box-shadow: 
+    0 0 15px rgba(255,215,0,0.4),
+    inset 0 0 10px rgba(255,215,0,0.1);
 }
 
 /* LEFT */
 .left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 /* AVATAR */
 .avatar {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px; /* bardziej TFT niż kółko */
   object-fit: cover;
-  border: 2px solid rgba(140,0,255,0.4);
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
 /* RANK */
 .rank {
   width: 24px;
-  text-align: right;
-  opacity: 0.5;
-  font-size: 12px;
+  text-align: center;
+  font-weight: bold;
+  color: #aaa;
 }
 
 /* NAME */
@@ -83,19 +88,20 @@ body {
 
 /* POINTS */
 .points {
-  font-weight: 700;
-  font-size: 15px;
+  font-weight: bold;
+  font-size: 16px;
+  color: #facc15;
 }
 
-/* ✨ zmiana */
+/* ZMIANA */
 .player.updated {
-  animation: glow 0.4s;
+  animation: flash 0.4s;
 }
 
-@keyframes glow {
-  0% { opacity: 0.5; }
-  50% { text-shadow: 0 0 12px #a855f7; }
-  100% { opacity: 1; }
+@keyframes flash {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
 }
 </style>
 </head>
