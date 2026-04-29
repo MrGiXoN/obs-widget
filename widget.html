@@ -2,6 +2,10 @@
 <html>
 <head>
 <meta charset="UTF-8">
+
+<!-- FONT -->
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
+
 <style>
 body {
   margin: 0;
@@ -46,7 +50,7 @@ body {
   box-shadow: 0 0 15px rgba(255,215,0,0.4);
 }
 
-/* NOWY LIDER */
+/* ANIMACJA NOWEGO LIDERA */
 .player.newLeader {
   animation: leaderEnter 0.8s ease;
 }
@@ -81,18 +85,38 @@ body {
   color: #aaa;
 }
 
-/* NAME */
+/* 🔥 NAME (BEBAS + NEON ANIMATION) */
 .name {
-  font-size: 14px;
+  font-size: 16px;
+  font-family: 'Bebas Neue', sans-serif;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+
+  background: linear-gradient(90deg, #ffffff, #ffd86b, #ffffff);
+  background-size: 200% auto;
+
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  animation: shine 4s linear infinite;
   transition: 0.3s;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.15);
 }
 
-/* LEADER NAME */
+/* animowany gradient */
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* LEADER NAME (mocniejszy efekt) */
 .player.top1 .name {
-  font-size: 16px;
-  font-weight: 700;
-  color: #ffe27a;
-  text-shadow: 0 0 8px rgba(255,215,0,0.7);
+  font-size: 18px;
+  letter-spacing: 2px;
+  animation: shine 2.5s linear infinite;
+  text-shadow:
+    0 0 8px rgba(255,215,0,0.8),
+    0 0 20px rgba(255,215,0,0.4);
 }
 
 /* POINTS */
@@ -171,8 +195,6 @@ async function loadData() {
   }));
 
   players.sort((a,b) => b.points - a.points);
-
-  // dodaj ranking
   players.forEach((p,i) => p.rank = i+1);
 
   const col1 = players.slice(0,4);
@@ -181,7 +203,7 @@ async function loadData() {
   document.getElementById("col1").innerHTML = renderColumn(col1);
   document.getElementById("col2").innerHTML = renderColumn(col2);
 
-  // 🔥 nowy lider
+  // nowy lider
   if (players[0] && players[0].name !== lastLeader) {
     const el = document.querySelector(`[data-name="${players[0].name}"]`);
     if (el) {
@@ -191,7 +213,7 @@ async function loadData() {
     lastLeader = players[0].name;
   }
 
-  // 🎯 animacja punktów
+  // animacja punktów
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
