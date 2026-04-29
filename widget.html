@@ -10,43 +10,46 @@ body {
   color: #eaeaf0;
 }
 
-/* PANEL */
+/* 🔥 PANEL */
 .container {
-  width: 360px;
-  padding: 16px;
-  border-radius: 14px;
-  background: rgba(15, 17, 25, 0.65);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,0.05);
+  width: 380px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(10, 10, 20, 0.7);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgba(170, 0, 255, 0.2);
+  box-shadow: 
+    0 0 40px rgba(140, 0, 255, 0.25),
+    inset 0 0 30px rgba(255,255,255,0.02);
 }
 
-/* TITLE */
+/* 🏆 TITLE */
 .title {
-  font-size: 14px;
-  text-transform: uppercase;
+  font-size: 16px;
   letter-spacing: 1px;
-  opacity: 0.6;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: #c084fc;
 }
 
-/* PLAYER ROW */
+/* 👤 ROW */
 .player {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 8px 6px;
-  border-bottom: 1px solid rgba(255,255,255,0.05);
-  transition: transform 0.4s ease;
+  align-items: center;
+  padding: 10px 6px;
+  border-bottom: 1px solid rgba(140,0,255,0.15);
+  transition: 0.3s;
 }
 
-/* usuń border ostatniego */
 .player:last-child {
   border-bottom: none;
 }
 
-/* TOP 1 */
+/* 🥇 TOP 1 */
 .player.top1 {
-  background: rgba(255,255,255,0.04);
+  color: #facc15;
+  text-shadow: 0 0 8px rgba(255,215,0,0.6);
 }
 
 /* LEFT */
@@ -58,18 +61,19 @@ body {
 
 /* AVATAR */
 .avatar {
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   object-fit: cover;
+  border: 2px solid rgba(140,0,255,0.4);
 }
 
 /* RANK */
 .rank {
-  width: 22px;
+  width: 24px;
   text-align: right;
-  font-size: 12px;
   opacity: 0.5;
+  font-size: 12px;
 }
 
 /* NAME */
@@ -79,17 +83,18 @@ body {
 
 /* POINTS */
 .points {
-  font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
+  font-size: 15px;
 }
 
-/* subtle change */
+/* ✨ zmiana */
 .player.updated {
-  animation: flash 0.4s;
+  animation: glow 0.4s;
 }
 
-@keyframes flash {
+@keyframes glow {
   0% { opacity: 0.5; }
+  50% { text-shadow: 0 0 12px #a855f7; }
   100% { opacity: 1; }
 }
 </style>
@@ -97,7 +102,7 @@ body {
 
 <body>
 <div class="container">
-  <div class="title">Ranking</div>
+  <div class="title">Tactician Master Series</div>
   <div id="board">Loading...</div>
 </div>
 
@@ -158,7 +163,7 @@ async function loadData() {
     if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
       el.classList.add("updated");
       animateNumber(pointsEl, lastData[p.name], p.points);
-      setTimeout(() => el.classList.remove("updated"), 300);
+      setTimeout(() => el.classList.remove("updated"), 400);
     }
 
     lastData[p.name] = p.points;
