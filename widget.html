@@ -39,8 +39,7 @@ body {
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-
-  transition: transform 0.5s ease;
+  transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
 /* LEFT */
@@ -77,21 +76,49 @@ body {
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
   box-shadow: 0 0 25px rgba(255,215,0,0.6);
+  animation: topPulse 1.6s infinite ease-in-out;
 }
 
-/* MOVE ANIMATION */
-.player.moving {
-  transform: translateY(0);
+@keyframes topPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* NAME SHINE */
+.player.top1 .name {
+  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }
 
 /* CORONA */
 .crown {
   opacity: 0;
   margin: 0 6px;
+  transition: 0.3s;
 }
 
 .player.achieved20 .crown {
   opacity: 1;
+}
+
+/* WIN */
+.player.win {
+  border: 1px solid #ffd700;
+  box-shadow: 0 0 40px rgba(255,215,0,1);
+}
+
+/* MOVE */
+.player.moving {
+  transform: scale(1.02);
 }
 </style>
 </head>
@@ -108,10 +135,11 @@ body {
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
 let winTriggered = {};
+let lastLeader = null;
 
 /* CONFETTI */
 function launchConfetti() {
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 25; i++) {
     const c = document.createElement("div");
     c.style.position = "fixed";
     c.style.left = Math.random() * 100 + "vw";
@@ -167,36 +195,62 @@ async function loadData() {
   render(players.slice(0,4), "col1");
   render(players.slice(4,8), "col2");
 
+  /* TOP1 */
+  const leader = players[0]?.name;
+
+  if (leader && leader !== lastLeader) {
+    const el = document.querySelector(`[data-name="${leader}"]`);
+    if (el) {
+      el.classList.add("moving");
+      setTimeout(() => el.classList.remove("moving"), 400);
+    }
+    lastLeader = leader;
+  }
+
   /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
-    if (p.isWin && !winTriggered[p.name]) {
-      winTriggered[p.name] = true;
-      launchConfetti();
+    const pointsEl = el.querySelector(".points");
+
+    if (p.isWin) {
+      el.classList.add("win");
+
+      if (!winTriggered[p.name]) {
+        winTriggered[p.name] = true;
+        launchConfetti();
+      }
+
+      pointsEl.textContent = "🏆 WIN";
+      return;
     }
+
+    if (p.points >= 20) {
+      el.classList.add("achieved20");
+    }
+
+    pointsEl.textContent = p.points;
   });
 }
 
-/* SAFE RENDER (NO DUPLICATES) */
+/* SAFE RENDER (NO RESET DOM) */
 function render(players, colId) {
   const container = document.getElementById(colId);
 
-  const old = new Map();
+  const existing = new Map();
   container.querySelectorAll(".player").forEach(el => {
-    old.set(el.dataset.name, el);
+    existing.set(el.dataset.name, el);
   });
 
-  container.innerHTML = "";
-
   players.forEach(p => {
-    let el = old.get(p.name);
+    let el = existing.get(p.name);
 
     if (!el) {
       el = document.createElement("div");
       el.className = "player";
       el.dataset.name = p.name;
+      container.appendChild(el);
     }
 
     el.innerHTML = `
@@ -208,16 +262,12 @@ function render(players, colId) {
 
       <div style="display:flex; align-items:center;">
         <span class="crown">👑</span>
-        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
+        <span class="points"></span>
       </div>
     `;
 
     if (p.rank === 1) el.classList.add("top1");
     else el.classList.remove("top1");
-
-    if (p.points >= 20) el.classList.add("achieved20");
-
-    container.appendChild(el);
   });
 }
 
