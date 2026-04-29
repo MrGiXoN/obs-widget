@@ -85,53 +85,57 @@ body {
   color: #facc15;
 }
 
-/* 👑 CROWN */
+/* 👑 20 POINTS */
 .crown {
   display: none;
-  font-size: 16px;
   margin: 0 6px;
-  animation: crownPop 0.4s ease;
 }
 
 .player.achieved20 .crown {
   display: inline-block;
 }
 
-@keyframes crownPop {
-  0% { transform: scale(0); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-/* 🔥 POWER UP ANIMATION */
+/* 🔥 POWERUP */
 .player.powerup {
   animation: powerUp 0.9s ease;
-  z-index: 10;
 }
 
 @keyframes powerUp {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 0 0 rgba(255,215,0,0);
-  }
-  40% {
-    transform: scale(1.08);
-    box-shadow: 0 0 25px rgba(255,215,0,0.8);
-  }
-  60% {
-    transform: scale(1.05) rotate(1deg);
-  }
-  75% {
-    transform: scale(1.07) rotate(-1deg);
-  }
-  100% {
-    transform: scale(1);
-  }
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+  60% { transform: scale(1.05) rotate(1deg); }
+  100% { transform: scale(1); }
+}
+
+/* 🏆 WINNER */
+.player.win {
+  border: 1px solid #ffd700;
+  box-shadow: 0 0 30px rgba(255,215,0,0.9);
+  animation: winPulse 1s infinite alternate;
+}
+
+@keyframes winPulse {
+  0% { transform: scale(1); }
+  100% { transform: scale(1.03); }
 }
 
 /* TOP1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.6);
   box-shadow: 0 0 15px rgba(255,215,0,0.4);
+}
+
+.player.top1 .name {
+  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2.5s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
 }
 </style>
 </head>
@@ -146,42 +150,37 @@ body {
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
 let lastData = {};
-let last20 = {};   // czy już miał 20+
+let last20 = {};
 let lastLeader = null;
 
-/* NUMBER ANIMATION */
-function animateNumber(el, start, end) {
-  const duration = 300;
-  const startTime = performance.now();
+/* 🎉 CONFETTI */
+function launchConfetti() {
+  const end = Date.now() + 1500;
 
-  function update(time) {
-    const progress = Math.min((time - startTime) / duration, 1);
-    const value = Math.floor(start + (end - start) * progress);
-    el.textContent = value;
-    if (progress < 1) requestAnimationFrame(update);
-  }
+  (function frame() {
+    const el = document.createElement("div");
+    el.style.position = "fixed";
+    el.style.left = Math.random() * 100 + "vw";
+    el.style.top = "-10px";
+    el.style.width = "6px";
+    el.style.height = "10px";
+    el.style.background = ["#ffd700","#fff","#ffcc00"][Math.floor(Math.random()*3)];
+    el.style.zIndex = 9999;
+    document.body.appendChild(el);
 
-  requestAnimationFrame(update);
+    let fall = setInterval(() => {
+      el.style.top = (parseFloat(el.style.top) + 4) + "px";
+      if (parseFloat(el.style.top) > window.innerHeight) {
+        el.remove();
+        clearInterval(fall);
+      }
+    }, 16);
+
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
 }
 
-/* RENDER */
-function renderColumn(players) {
-  return players.map(p => `
-    <div class="player ${p.rank===1?'top1':''}" data-name="${p.name}">
-      <div class="left">
-        <img class="avatar" src="${p.avatar}">
-        <span class="rank">#${p.rank}</span>
-        <span class="name">${p.name}</span>
-      </div>
-
-      <div style="display:flex; align-items:center;">
-        <span class="crown">👑</span>
-        <span class="points">${p.points}</span>
-      </div>
-    </div>
-  `).join("");
-}
-
+/* DATA */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -192,11 +191,17 @@ async function loadData() {
 
   const rows = json.table.rows;
 
-  let players = rows.map(r => ({
-    name: r.c[0]?.v || "",
-    points: r.c[1]?.v || 0,
-    avatar: r.c[2]?.v || "https://i.imgur.com/4M34hi2.png"
-  }));
+  let players = rows.map(r => {
+    const val = r.c[1]?.v;
+
+    return {
+      name: r.c[0]?.v || "",
+      avatar: r.c[2]?.v || "https://i.imgur.com/4M34hi2.png",
+
+      isWin: (val + "").toUpperCase() === "WIN",
+      points: isNaN(Number(val)) ? 0 : Number(val)
+    };
+  });
 
   players.sort((a,b) => b.points - a.points);
   players.forEach((p,i) => p.rank = i+1);
@@ -204,42 +209,10 @@ async function loadData() {
   const col1 = players.slice(0,4);
   const col2 = players.slice(4,8);
 
-  document.getElementById("col1").innerHTML = renderColumn(col1);
-  document.getElementById("col2").innerHTML = renderColumn(col2);
+  document.getElementById("col1").innerHTML = render(col1);
+  document.getElementById("col2").innerHTML = render(col2);
 
-  /* =========================
-     👑 20 POINTS LOGIC
-  ========================= */
-  players.forEach(p => {
-    const el = document.querySelector(`[data-name="${p.name}"]`);
-    if (!el) return;
-
-    const pointsEl = el.querySelector(".points");
-
-    /* number animation */
-    if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
-      animateNumber(pointsEl, lastData[p.name], p.points);
-    }
-
-    lastData[p.name] = p.points;
-
-    /* 👑 20 POINTS UNLOCK */
-    if (p.points >= 20) {
-      el.classList.add("achieved20");
-
-      if (!last20[p.name]) {
-        el.classList.add("powerup");
-
-        setTimeout(() => {
-          el.classList.remove("powerup");
-        }, 900);
-
-        last20[p.name] = true;
-      }
-    }
-  });
-
-  /* leader logic */
+  /* LEADER CHANGE */
   const newLeader = players[0]?.name;
   if (newLeader !== lastLeader) {
     const el = document.querySelector(`[data-name="${newLeader}"]`);
@@ -249,6 +222,58 @@ async function loadData() {
     }
     lastLeader = newLeader;
   }
+
+  /* LOGIC */
+  players.forEach(p => {
+    const el = document.querySelector(`[data-name="${p.name}"]`);
+    if (!el) return;
+
+    const pointsEl = el.querySelector(".points");
+
+    /* WIN */
+    if (p.isWin) {
+      el.classList.add("win");
+
+      if (!el.classList.contains("win-done")) {
+        el.classList.add("win-done");
+        launchConfetti();
+      }
+
+      pointsEl.textContent = "🏆 WIN";
+      return;
+    }
+
+    /* 20 POINTS */
+    if (p.points >= 20) {
+      el.classList.add("achieved20");
+
+      if (!last20[p.name]) {
+        el.classList.add("powerup");
+        setTimeout(() => el.classList.remove("powerup"), 900);
+        last20[p.name] = true;
+      }
+    }
+
+    lastData[p.name] = p.points;
+  });
+}
+
+/* RENDER */
+function render(players) {
+  return players.map(p => `
+    <div class="player ${p.rank===1?'top1':''} ${p.isWin?'win':''}" data-name="${p.name}">
+      <div class="left">
+        <img class="avatar" src="${p.avatar}">
+        <span class="rank">#${p.rank}</span>
+        <span class="name">${p.name}</span>
+      </div>
+
+      <div style="display:flex; align-items:center;">
+        <span class="crown">👑</span>
+        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
+      </div>
+    </div>
+  `).join("");
 }
 
 loadData();
