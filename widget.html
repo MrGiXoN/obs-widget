@@ -58,6 +58,7 @@ body {
   color: #aaa;
 }
 
+/* NAME */
 .name {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 16px;
@@ -66,18 +67,13 @@ body {
   top: 1px;
 }
 
+/* POINTS */
 .points {
   font-weight: bold;
   color: #facc15;
 }
 
-/* TOP1 */
-.player.top1 {
-  border: 1px solid rgba(255,215,0,0.6);
-  box-shadow: 0 0 15px rgba(255,215,0,0.4);
-}
-
-/* WIN */
+/* WIN STYLE */
 .player.win {
   border: 1px solid #ffd700;
   box-shadow: 0 0 30px rgba(255,215,0,0.9);
@@ -112,9 +108,9 @@ body {
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
 let lastLeader = null;
-let winTriggered = {}; // 🔥 FIX: blokada wielokrotnego konfetti
+let winTriggered = {};
 
-/* 🎉 CONFETTI */
+/* CONFETTI */
 function launchConfetti() {
   const end = Date.now() + 1200;
 
@@ -141,7 +137,7 @@ function launchConfetti() {
   })();
 }
 
-/* LOAD */
+/* LOAD DATA */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -155,11 +151,14 @@ async function loadData() {
   let players = rows.map(r => {
     const val = r.c[1]?.v;
 
+    const isWin = (val + "").toUpperCase() === "WIN";
+    const points = isWin ? 0 : Number(val) || 0;
+
     return {
       name: r.c[0]?.v || "",
       avatar: r.c[2]?.v || "https://i.imgur.com/4M34hi2.png",
-      isWin: (val + "").toUpperCase() === "WIN",
-      points: isNaN(Number(val)) ? 0 : Number(val)
+      isWin,
+      points
     };
   });
 
@@ -169,7 +168,7 @@ async function loadData() {
   document.getElementById("col1").innerHTML = render(players.slice(0,4));
   document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  /* LEADER */
+  /* LEADER ANIMATION */
   const newLeader = players[0]?.name;
 
   if (newLeader && newLeader !== lastLeader) {
@@ -186,8 +185,6 @@ async function loadData() {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
-    const pointsEl = el.querySelector(".points");
-
     if (p.isWin) {
       el.classList.add("win");
 
@@ -195,8 +192,6 @@ async function loadData() {
         winTriggered[p.name] = true;
         launchConfetti();
       }
-
-      pointsEl.textContent = "🏆 WIN";
     }
   });
 }
@@ -210,7 +205,10 @@ function render(players) {
         <span class="rank">#${p.rank}</span>
         <span class="name">${p.name}</span>
       </div>
-      <div class="points">${p.isWin ? "🏆 WIN" : p.points}</div>
+
+      <div class="points">
+        ${p.isWin ? "🏆 WIN" : p.points}
+      </div>
     </div>
   `).join("");
 }
