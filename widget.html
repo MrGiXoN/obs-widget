@@ -28,6 +28,7 @@ body {
   border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
+/* PLAYER */
 .player {
   display: flex;
   justify-content: space-between;
@@ -40,6 +41,7 @@ body {
   transition: 0.3s;
 }
 
+/* LEFT */
 .left {
   display: flex;
   align-items: center;
@@ -73,7 +75,30 @@ body {
   color: #facc15;
 }
 
-/* WIN STYLE */
+/* =========================
+   🥇 TOP 1 (WRÓCIŁ GL0W)
+========================= */
+.player.top1 {
+  border: 1px solid rgba(255,215,0,0.6);
+  box-shadow: 0 0 15px rgba(255,215,0,0.4);
+}
+
+.player.top1 .name {
+  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2.5s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* =========================
+   🏆 WIN STYLE
+========================= */
 .player.win {
   border: 1px solid #ffd700;
   box-shadow: 0 0 30px rgba(255,215,0,0.9);
@@ -110,7 +135,7 @@ const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-
 let lastLeader = null;
 let winTriggered = {};
 
-/* CONFETTI */
+/* 🎉 CONFETTI */
 function launchConfetti() {
   const end = Date.now() + 1200;
 
@@ -137,7 +162,7 @@ function launchConfetti() {
   })();
 }
 
-/* LOAD DATA */
+/* LOAD */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -168,7 +193,7 @@ async function loadData() {
   document.getElementById("col1").innerHTML = render(players.slice(0,4));
   document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  /* LEADER ANIMATION */
+  /* LEADER CHANGE */
   const newLeader = players[0]?.name;
 
   if (newLeader && newLeader !== lastLeader) {
@@ -180,7 +205,7 @@ async function loadData() {
     lastLeader = newLeader;
   }
 
-  /* WIN LOGIC */
+  /* WIN LOGIC (FIXED) */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
@@ -205,7 +230,6 @@ function render(players) {
         <span class="rank">#${p.rank}</span>
         <span class="name">${p.name}</span>
       </div>
-
       <div class="points">
         ${p.isWin ? "🏆 WIN" : p.points}
       </div>
