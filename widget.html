@@ -28,7 +28,6 @@ body {
   border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
-/* PLAYER */
 .player {
   display: flex;
   justify-content: space-between;
@@ -75,26 +74,16 @@ body {
   color: #facc15;
 }
 
-/* 👑 20 POINTS CORONA */
-.crown {
-  display: none;
-  margin: 0 6px;
-  animation: crownPop 0.3s ease;
-}
-
-.player.achieved20 .crown {
-  display: inline-block;
-}
-
-@keyframes crownPop {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+/* 🥇 TOP1 */
+.player.top1 {
+  border: 1px solid rgba(255,215,0,0.6);
+  box-shadow: 0 0 15px rgba(255,215,0,0.4);
 }
 
 /* 🏆 WIN */
 .player.win {
   border: 1px solid #ffd700;
-  box-shadow: 0 0 30px rgba(255,215,0,0.9);
+  box-shadow: 0 0 35px rgba(255,215,0,1);
   animation: winPulse 1s infinite alternate;
 }
 
@@ -103,33 +92,24 @@ body {
   100% { transform: scale(1.03); }
 }
 
-/* 🥇 TOP1 */
-.player.top1 {
-  border: 1px solid rgba(255,215,0,0.6);
-  box-shadow: 0 0 15px rgba(255,215,0,0.4);
+/* 👑 20 POINTS */
+.crown {
+  display: none;
+  margin: 0 6px;
 }
 
-.player.top1 .name {
-  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shine 2.5s linear infinite;
+.player.achieved20 .crown {
+  display: inline-block;
 }
 
-@keyframes shine {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-
-/* 🔥 POWERUP */
+/* POWERUP */
 .player.powerup {
   animation: powerUp 0.9s ease;
 }
 
 @keyframes powerUp {
   0% { transform: scale(1); }
-  40% { transform: scale(1.08); box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+  40% { transform: scale(1.08); }
   100% { transform: scale(1); }
 }
 </style>
@@ -150,7 +130,7 @@ let last20 = {};
 
 /* 🎉 CONFETTI */
 function launchConfetti() {
-  const end = Date.now() + 1200;
+  const end = Date.now() + 1500;
 
   (function frame() {
     const c = document.createElement("div");
@@ -187,20 +167,23 @@ async function loadData() {
   const rows = json.table.rows;
 
   let players = rows.map(r => {
-    const val = r.c[1]?.v;
-
-    const isWin = (val + "").toUpperCase() === "WIN";
-    const points = isWin ? 0 : Number(val) || 0;
+    const val = (r.c[1]?.v + "").trim();
 
     return {
       name: r.c[0]?.v || "",
       avatar: r.c[2]?.v || "https://i.imgur.com/4M34hi2.png",
-      isWin,
-      points
+      isWin: val.toUpperCase() === "WIN",
+      points: isNaN(Number(val)) ? 0 : Number(val)
     };
   });
 
-  players.sort((a,b) => b.points - a.points);
+  /* ❗ WIN zawsze na górze */
+  players.sort((a,b) => {
+    if (a.isWin && !b.isWin) return -1;
+    if (!a.isWin && b.isWin) return 1;
+    return b.points - a.points;
+  });
+
   players.forEach((p,i) => p.rank = i+1);
 
   document.getElementById("col1").innerHTML = render(players.slice(0,4));
@@ -208,6 +191,7 @@ async function loadData() {
 
   /* LEADER */
   const newLeader = players[0]?.name;
+
   if (newLeader && newLeader !== lastLeader) {
     const el = document.querySelector(`[data-name="${newLeader}"]`);
     if (el) {
@@ -223,7 +207,6 @@ async function loadData() {
     if (!el) return;
 
     const pointsEl = el.querySelector(".points");
-    const crown = el.querySelector(".crown");
 
     /* 🏆 WIN */
     if (p.isWin) {
@@ -248,6 +231,7 @@ async function loadData() {
         last20[p.name] = true;
       }
 
+      const crown = el.querySelector(".crown");
       if (crown) crown.style.display = "inline-block";
     }
 
