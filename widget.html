@@ -11,6 +11,7 @@ body {
   font-family: 'Segoe UI', sans-serif;
   background: transparent;
   color: #eaeaf0;
+  overflow: hidden;
 }
 
 .container {
@@ -26,6 +27,7 @@ body {
   background: rgba(12, 14, 20, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
+  min-height: 500px;
 }
 
 /* PLAYER */
@@ -38,8 +40,11 @@ body {
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-  transition: 0.3s;
-  position: relative;
+
+  transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1),
+              box-shadow 0.6s,
+              opacity 0.6s;
+  will-change: transform;
 }
 
 /* LEFT */
@@ -74,22 +79,13 @@ body {
   color: #facc15;
 }
 
-/* =======================
-   🥇 TOP 1 (PULS CAŁEGO KAFELKA)
-======================= */
+/* 🥇 TOP1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
-  box-shadow: 0 0 25px rgba(255,215,0,0.6);
-  animation: topPulse 1.6s infinite ease-in-out;
+  box-shadow: 0 0 30px rgba(255,215,0,0.6);
 }
 
-@keyframes topPulse {
-  0%   { transform: scale(1); box-shadow: 0 0 15px rgba(255,215,0,0.3); }
-  50%  { transform: scale(1.03); box-shadow: 0 0 35px rgba(255,215,0,0.9); }
-  100% { transform: scale(1); box-shadow: 0 0 15px rgba(255,215,0,0.3); }
-}
-
-/* TOP1 NAME SHINE */
+/* NAME SHINE */
 .player.top1 .name {
   background: linear-gradient(90deg, #fff, #ffd86b, #fff);
   background-size: 200% auto;
@@ -103,25 +99,14 @@ body {
   100% { background-position: 200% center; }
 }
 
-/* =======================
-   👑 CORONA (STATYCZNA)
-======================= */
+/* 👑 CORONA */
 .crown {
   opacity: 0;
-  transform: scale(0);
   margin: 0 6px;
-  display: inline-block;
 }
 
 .player.achieved20 .crown {
   opacity: 1;
-  transform: scale(1);
-  animation: crownIn 0.3s ease forwards;
-}
-
-@keyframes crownIn {
-  from { opacity: 0; transform: scale(0); }
-  to { opacity: 1; transform: scale(1); }
 }
 
 /* 🏆 WIN */
@@ -130,15 +115,10 @@ body {
   box-shadow: 0 0 40px rgba(255,215,0,1);
 }
 
-/* POWERUP (leader change) */
-.player.powerup {
-  animation: powerUp 0.8s ease;
-}
-
-@keyframes powerUp {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.08); }
-  100% { transform: scale(1); }
+/* MOVE ANIMATION BOOST */
+.player.moving {
+  z-index: 10;
+  transform: scale(1.03);
 }
 </style>
 </head>
@@ -152,11 +132,9 @@ body {
 <script>
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let lastLeader = null;
-let winTriggered = {};
-let crownState = {};
+let lastData = {};
 
-/* 🎉 CONFETTI */
+/* CONFETTI */
 function launchConfetti() {
   const end = Date.now() + 1200;
 
@@ -205,7 +183,7 @@ async function loadData() {
     };
   });
 
-  /* WIN always on top */
+  /* SORT */
   players.sort((a,b) => {
     if (a.isWin && !b.isWin) return -1;
     if (!a.isWin && b.isWin) return 1;
@@ -214,53 +192,49 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
+  /* F1 ANIMATION (FLIP TECHNIQUE) */
+  const oldEls = {};
+  document.querySelectorAll(".player").forEach(el => {
+    const name = el.dataset.name;
+    oldEls[name] = el.getBoundingClientRect();
+  });
+
   document.getElementById("col1").innerHTML = render(players.slice(0,4));
   document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  /* TOP1 ANIMATION */
-  const leader = players[0]?.name;
-  if (leader && leader !== lastLeader) {
-    const el = document.querySelector(`[data-name="${leader}"]`);
-    if (el) {
-      el.classList.add("powerup");
-      setTimeout(() => el.classList.remove("powerup"), 800);
-    }
-    lastLeader = leader;
-  }
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".player").forEach(el => {
+      const name = el.dataset.name;
+      const newPos = el.getBoundingClientRect();
+      const oldPos = oldEls[name];
 
-  /* LOGIC */
+      if (oldPos) {
+        const dx = oldPos.left - newPos.left;
+        const dy = oldPos.top - newPos.top;
+
+        el.style.transform = `translate(${dx}px, ${dy}px) scale(1)`;
+        el.classList.add("moving");
+
+        requestAnimationFrame(() => {
+          el.style.transition = "transform 0.6s cubic-bezier(0.2,0.8,0.2,1)";
+          el.style.transform = "";
+        });
+
+        setTimeout(() => el.classList.remove("moving"), 600);
+      }
+    });
+  });
+
+  /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
-    const pointsEl = el.querySelector(".points");
-    const crown = el.querySelector(".crown");
-
-    /* WIN */
-    if (p.isWin) {
-      el.classList.add("win");
-
-      if (!winTriggered[p.name]) {
-        winTriggered[p.name] = true;
-        launchConfetti();
-      }
-
-      pointsEl.textContent = "🏆 WIN";
-      return;
+    if (p.isWin && !lastData[p.name]) {
+      launchConfetti();
     }
 
-    /* 20+ POINTS */
-    if (p.points >= 20) {
-      el.classList.add("achieved20");
-
-      if (!crownState[p.name]) {
-        crownState[p.name] = true;
-        if (crown) crown.style.opacity = "1";
-        if (crown) crown.style.transform = "scale(1)";
-      }
-    }
-
-    pointsEl.textContent = p.points;
+    lastData[p.name] = p.isWin;
   });
 }
 
