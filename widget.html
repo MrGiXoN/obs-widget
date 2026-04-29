@@ -13,14 +13,12 @@ body {
   color: #eaeaf0;
 }
 
-/* PANEL */
 .container {
   width: 820px;
   display: flex;
   gap: 20px;
 }
 
-/* COLUMN */
 .column {
   flex: 1;
   padding: 14px;
@@ -30,7 +28,6 @@ body {
   border: 1px solid rgba(255, 215, 0, 0.15);
 }
 
-/* PLAYER */
 .player {
   display: flex;
   justify-content: space-between;
@@ -41,73 +38,46 @@ body {
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
   transition: 0.3s;
-  position: relative;
 }
 
-/* LEFT */
 .left {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-/* AVATAR */
 .avatar {
   width: 34px;
   height: 34px;
   border-radius: 6px;
-  object-fit: cover;
-  border: 1px solid rgba(255,255,255,0.2);
 }
 
-/* RANK */
 .rank {
   width: 28px;
   text-align: center;
-  font-weight: bold;
   color: #aaa;
 }
 
-/* NAME */
 .name {
-  font-size: 16px;
   font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px;
   letter-spacing: 1.5px;
-  text-transform: uppercase;
   position: relative;
   top: 1px;
 }
 
-/* POINTS */
 .points {
   font-weight: bold;
-  font-size: 16px;
   color: #facc15;
 }
 
-/* 👑 20 POINTS */
-.crown {
-  display: none;
-  margin: 0 6px;
+/* TOP1 */
+.player.top1 {
+  border: 1px solid rgba(255,215,0,0.6);
+  box-shadow: 0 0 15px rgba(255,215,0,0.4);
 }
 
-.player.achieved20 .crown {
-  display: inline-block;
-}
-
-/* 🔥 POWERUP */
-.player.powerup {
-  animation: powerUp 0.9s ease;
-}
-
-@keyframes powerUp {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.08); box-shadow: 0 0 25px rgba(255,215,0,0.8); }
-  60% { transform: scale(1.05) rotate(1deg); }
-  100% { transform: scale(1); }
-}
-
-/* 🏆 WINNER */
+/* WIN */
 .player.win {
   border: 1px solid #ffd700;
   box-shadow: 0 0 30px rgba(255,215,0,0.9);
@@ -119,23 +89,15 @@ body {
   100% { transform: scale(1.03); }
 }
 
-/* TOP1 */
-.player.top1 {
-  border: 1px solid rgba(255,215,0,0.6);
-  box-shadow: 0 0 15px rgba(255,215,0,0.4);
+/* POWERUP */
+.player.powerup {
+  animation: powerUp 0.9s ease;
 }
 
-.player.top1 .name {
-  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: shine 2.5s linear infinite;
-}
-
-@keyframes shine {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
+@keyframes powerUp {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.08); box-shadow: 0 0 25px rgba(255,215,0,0.8); }
+  100% { transform: scale(1); }
 }
 </style>
 </head>
@@ -149,29 +111,28 @@ body {
 <script>
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let lastData = {};
-let last20 = {};
 let lastLeader = null;
+let winTriggered = {}; // 🔥 FIX: blokada wielokrotnego konfetti
 
 /* 🎉 CONFETTI */
 function launchConfetti() {
-  const end = Date.now() + 1500;
+  const end = Date.now() + 1200;
 
   (function frame() {
-    const el = document.createElement("div");
-    el.style.position = "fixed";
-    el.style.left = Math.random() * 100 + "vw";
-    el.style.top = "-10px";
-    el.style.width = "6px";
-    el.style.height = "10px";
-    el.style.background = ["#ffd700","#fff","#ffcc00"][Math.floor(Math.random()*3)];
-    el.style.zIndex = 9999;
-    document.body.appendChild(el);
+    const c = document.createElement("div");
+    c.style.position = "fixed";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.top = "-10px";
+    c.style.width = "6px";
+    c.style.height = "10px";
+    c.style.background = ["#ffd700","#fff","#ffcc00"][Math.floor(Math.random()*3)];
+    c.style.zIndex = 9999;
+    document.body.appendChild(c);
 
     let fall = setInterval(() => {
-      el.style.top = (parseFloat(el.style.top) + 4) + "px";
-      if (parseFloat(el.style.top) > window.innerHeight) {
-        el.remove();
+      c.style.top = (parseFloat(c.style.top) + 5) + "px";
+      if (parseFloat(c.style.top) > window.innerHeight) {
+        c.remove();
         clearInterval(fall);
       }
     }, 16);
@@ -180,7 +141,7 @@ function launchConfetti() {
   })();
 }
 
-/* DATA */
+/* LOAD */
 async function loadData() {
   const res = await fetch(URL + "&t=" + Date.now());
   const text = await res.text();
@@ -197,7 +158,6 @@ async function loadData() {
     return {
       name: r.c[0]?.v || "",
       avatar: r.c[2]?.v || "https://i.imgur.com/4M34hi2.png",
-
       isWin: (val + "").toUpperCase() === "WIN",
       points: isNaN(Number(val)) ? 0 : Number(val)
     };
@@ -206,15 +166,13 @@ async function loadData() {
   players.sort((a,b) => b.points - a.points);
   players.forEach((p,i) => p.rank = i+1);
 
-  const col1 = players.slice(0,4);
-  const col2 = players.slice(4,8);
+  document.getElementById("col1").innerHTML = render(players.slice(0,4));
+  document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  document.getElementById("col1").innerHTML = render(col1);
-  document.getElementById("col2").innerHTML = render(col2);
-
-  /* LEADER CHANGE */
+  /* LEADER */
   const newLeader = players[0]?.name;
-  if (newLeader !== lastLeader) {
+
+  if (newLeader && newLeader !== lastLeader) {
     const el = document.querySelector(`[data-name="${newLeader}"]`);
     if (el) {
       el.classList.add("powerup");
@@ -223,38 +181,23 @@ async function loadData() {
     lastLeader = newLeader;
   }
 
-  /* LOGIC */
+  /* WIN LOGIC */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
     const pointsEl = el.querySelector(".points");
 
-    /* WIN */
     if (p.isWin) {
       el.classList.add("win");
 
-      if (!el.classList.contains("win-done")) {
-        el.classList.add("win-done");
+      if (!winTriggered[p.name]) {
+        winTriggered[p.name] = true;
         launchConfetti();
       }
 
       pointsEl.textContent = "🏆 WIN";
-      return;
     }
-
-    /* 20 POINTS */
-    if (p.points >= 20) {
-      el.classList.add("achieved20");
-
-      if (!last20[p.name]) {
-        el.classList.add("powerup");
-        setTimeout(() => el.classList.remove("powerup"), 900);
-        last20[p.name] = true;
-      }
-    }
-
-    lastData[p.name] = p.points;
   });
 }
 
@@ -267,11 +210,7 @@ function render(players) {
         <span class="rank">#${p.rank}</span>
         <span class="name">${p.name}</span>
       </div>
-
-      <div style="display:flex; align-items:center;">
-        <span class="crown">👑</span>
-        <span class="points">${p.isWin ? "🏆 WIN" : p.points}</span>
-      </div>
+      <div class="points">${p.isWin ? "🏆 WIN" : p.points}</div>
     </div>
   `).join("");
 }
