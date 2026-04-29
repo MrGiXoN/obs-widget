@@ -11,18 +11,22 @@ body {
   font-family: 'Segoe UI', sans-serif;
   background: transparent;
   color: #eaeaf0;
+  overflow: hidden;
 }
 
+/* 🔥 MNIEJSZY OVERLAY */
 .container {
-  width: 820px;
+  width: 520px;
   display: flex;
-  gap: 20px;
+  gap: 14px;
+  transform: scale(0.95);
+  transform-origin: top left;
 }
 
 .column {
   flex: 1;
-  padding: 14px;
-  border-radius: 14px;
+  padding: 10px;
+  border-radius: 12px;
   background: rgba(12, 14, 20, 0.85);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
@@ -33,60 +37,65 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  margin: 8px 0;
-  border-radius: 10px;
+
+  padding: 8px 10px;
+  margin: 6px 0;
+
+  border-radius: 8px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+
+  transition: transform 0.3s ease;
 }
 
 /* LEFT */
 .left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .avatar {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
 }
 
 .rank {
-  width: 28px;
+  width: 22px;
   text-align: center;
   color: #aaa;
+  font-size: 12px;
 }
 
 /* NAME */
 .name {
   font-family: 'Bebas Neue', sans-serif;
-  font-size: 16px;
-  letter-spacing: 1.5px;
+  font-size: 14px;
+  letter-spacing: 1px;
 }
 
 /* POINTS */
 .points {
   font-weight: bold;
+  font-size: 14px;
   color: #facc15;
 }
 
-/* TOP1 */
+/* 🥇 TOP 1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
-  box-shadow: 0 0 25px rgba(255,215,0,0.6);
+  box-shadow: 0 0 18px rgba(255,215,0,0.6);
   animation: topPulse 1.6s infinite ease-in-out;
 }
 
 @keyframes topPulse {
   0% { transform: scale(1); }
-  50% { transform: scale(1.03); }
+  50% { transform: scale(1.02); }
   100% { transform: scale(1); }
 }
 
-/* SHINE */
+/* SHINE TOP1 */
 .player.top1 .name {
   background: linear-gradient(90deg, #fff, #ffd86b, #fff);
   background-size: 200% auto;
@@ -100,7 +109,7 @@ body {
   100% { background-position: 200% center; }
 }
 
-/* CORONA */
+/* 👑 20+ */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -110,13 +119,13 @@ body {
   opacity: 1;
 }
 
-/* WIN */
+/* 🏆 WIN */
 .player.win {
   border: 1px solid #ffd700;
-  box-shadow: 0 0 40px rgba(255,215,0,1);
+  box-shadow: 0 0 30px rgba(255,215,0,0.9);
 }
 
-/* MOVE EFFECT (bez DOM chaosu) */
+/* animacja zmiany */
 .player.flash {
   transform: scale(1.02);
 }
@@ -139,7 +148,7 @@ let winTriggered = {};
 
 /* CONFETTI */
 function launchConfetti() {
-  for (let i = 0; i < 20; i++) {
+  for (let i = 0; i < 18; i++) {
     const c = document.createElement("div");
     c.style.position = "fixed";
     c.style.left = Math.random() * 100 + "vw";
@@ -192,34 +201,22 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  render(players);
-}
+  render(players.slice(0,4), "col1");
+  render(players.slice(4,8), "col2");
 
-/* SAFE RENDER (NO DUPLICATES VERSION 100% STABLE) */
-function render(players) {
-  const col1 = document.getElementById("col1");
-  const col2 = document.getElementById("col2");
-
-  col1.innerHTML = "";
-  col2.innerHTML = "";
-
-  const c1 = players.slice(0,4);
-  const c2 = players.slice(4,8);
-
-  drawColumn(c1, col1);
-  drawColumn(c2, col2);
-
+  /* TOP1 */
   const leader = players[0]?.name;
 
   if (leader && leader !== lastLeader) {
     const el = document.querySelector(`[data-name="${leader}"]`);
     if (el) {
       el.classList.add("flash");
-      setTimeout(() => el.classList.remove("flash"), 400);
+      setTimeout(() => el.classList.remove("flash"), 300);
     }
     lastLeader = leader;
   }
 
+  /* WIN */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
@@ -246,8 +243,11 @@ function render(players) {
   });
 }
 
-/* DRAW */
-function drawColumn(players, container) {
+/* RENDER */
+function render(players, colId) {
+  const container = document.getElementById(colId);
+  container.innerHTML = "";
+
   players.forEach(p => {
     const el = document.createElement("div");
     el.className = "player";
