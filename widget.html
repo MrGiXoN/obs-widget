@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 
-<!-- FONT -->
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&display=swap" rel="stylesheet">
 
 <style>
@@ -21,7 +20,7 @@ body {
   gap: 20px;
 }
 
-/* KOLUMNY */
+/* COLUMN */
 .column {
   flex: 1;
   padding: 14px;
@@ -42,6 +41,7 @@ body {
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
   transition: 0.3s;
+  position: relative;
 }
 
 /* LEFT */
@@ -68,68 +68,14 @@ body {
   color: #aaa;
 }
 
-/* =========================
-   NAME (BEBAS FIX + STABILIZACJA)
-========================= */
+/* NAME */
 .name {
   font-size: 16px;
   font-family: 'Bebas Neue', sans-serif;
   letter-spacing: 1.5px;
   text-transform: uppercase;
-
-  line-height: 1;
   position: relative;
   top: 1px;
-
-  color: #eaeaf0;
-}
-
-/* =========================
-   TOP 1 STYLE
-========================= */
-.player.top1 .name {
-  font-size: 18px;
-  letter-spacing: 2px;
-
-  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
-  background-size: 200% auto;
-
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-
-  animation: shine 2.5s linear infinite;
-
-  text-shadow:
-    0 0 8px rgba(255,215,0,0.9),
-    0 0 20px rgba(255,215,0,0.6),
-    0 0 30px rgba(255,215,0,0.4);
-}
-
-@keyframes shine {
-  0% { background-position: 0% center; }
-  100% { background-position: 200% center; }
-}
-
-/* =========================
-   🔥 WYPRZEDZENIE ANIMATION
-========================= */
-.player.overtake {
-  animation: goldFlash 0.9s ease;
-}
-
-@keyframes goldFlash {
-  0% {
-    box-shadow: 0 0 0 rgba(255,215,0,0);
-    transform: scale(1);
-  }
-  30% {
-    box-shadow: 0 0 25px rgba(255,215,0,0.8);
-    transform: scale(1.05);
-  }
-  100% {
-    box-shadow: 0 0 0 rgba(255,215,0,0);
-    transform: scale(1);
-  }
 }
 
 /* POINTS */
@@ -139,18 +85,50 @@ body {
   color: #facc15;
 }
 
-/* UPDATE */
-.player.updated {
-  animation: flash 0.4s;
+/* 👑 CROWN */
+.crown {
+  display: none;
+  font-size: 16px;
+  margin: 0 6px;
+  animation: crownPop 0.4s ease;
 }
 
-@keyframes flash {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.04); }
-  100% { transform: scale(1); }
+.player.achieved20 .crown {
+  display: inline-block;
 }
 
-/* TOP1 border */
+@keyframes crownPop {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* 🔥 POWER UP ANIMATION */
+.player.powerup {
+  animation: powerUp 0.9s ease;
+  z-index: 10;
+}
+
+@keyframes powerUp {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(255,215,0,0);
+  }
+  40% {
+    transform: scale(1.08);
+    box-shadow: 0 0 25px rgba(255,215,0,0.8);
+  }
+  60% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  75% {
+    transform: scale(1.07) rotate(-1deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* TOP1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.6);
   box-shadow: 0 0 15px rgba(255,215,0,0.4);
@@ -168,8 +146,10 @@ body {
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
 let lastData = {};
+let last20 = {};   // czy już miał 20+
 let lastLeader = null;
 
+/* NUMBER ANIMATION */
 function animateNumber(el, start, end) {
   const duration = 300;
   const startTime = performance.now();
@@ -184,6 +164,7 @@ function animateNumber(el, start, end) {
   requestAnimationFrame(update);
 }
 
+/* RENDER */
 function renderColumn(players) {
   return players.map(p => `
     <div class="player ${p.rank===1?'top1':''}" data-name="${p.name}">
@@ -192,7 +173,11 @@ function renderColumn(players) {
         <span class="rank">#${p.rank}</span>
         <span class="name">${p.name}</span>
       </div>
-      <div class="points">${p.points}</div>
+
+      <div style="display:flex; align-items:center;">
+        <span class="crown">👑</span>
+        <span class="points">${p.points}</span>
+      </div>
     </div>
   `).join("");
 }
@@ -223,45 +208,47 @@ async function loadData() {
   document.getElementById("col2").innerHTML = renderColumn(col2);
 
   /* =========================
-     🔥 FIXED OVERTAKE LOGIC
+     👑 20 POINTS LOGIC
   ========================= */
-  const newLeader = players[0]?.name;
-  const oldLeader = lastLeader;
-
-  if (newLeader && newLeader !== oldLeader) {
-
-    const newEl = document.querySelector(`[data-name="${newLeader}"]`);
-    if (newEl) {
-      newEl.classList.add("overtake");
-      setTimeout(() => newEl.classList.remove("overtake"), 900);
-    }
-
-    if (oldLeader) {
-      const oldEl = document.querySelector(`[data-name="${oldLeader}"]`);
-      if (oldEl) {
-        oldEl.classList.add("overtake");
-        setTimeout(() => oldEl.classList.remove("overtake"), 900);
-      }
-    }
-
-    lastLeader = newLeader;
-  }
-
-  /* POINTS ANIMATION */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
     const pointsEl = el.querySelector(".points");
 
+    /* number animation */
     if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
-      el.classList.add("updated");
       animateNumber(pointsEl, lastData[p.name], p.points);
-      setTimeout(() => el.classList.remove("updated"), 400);
     }
 
     lastData[p.name] = p.points;
+
+    /* 👑 20 POINTS UNLOCK */
+    if (p.points >= 20) {
+      el.classList.add("achieved20");
+
+      if (!last20[p.name]) {
+        el.classList.add("powerup");
+
+        setTimeout(() => {
+          el.classList.remove("powerup");
+        }, 900);
+
+        last20[p.name] = true;
+      }
+    }
   });
+
+  /* leader logic */
+  const newLeader = players[0]?.name;
+  if (newLeader !== lastLeader) {
+    const el = document.querySelector(`[data-name="${newLeader}"]`);
+    if (el) {
+      el.classList.add("powerup");
+      setTimeout(() => el.classList.remove("powerup"), 900);
+    }
+    lastLeader = newLeader;
+  }
 }
 
 loadData();
