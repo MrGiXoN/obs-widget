@@ -10,13 +10,24 @@ body {
   color: white;
 }
 
+/* 🔥 GLASS PANEL */
 .container {
-  width: 360px;
-  padding: 15px;
-  border-radius: 16px;
-  background: rgba(20, 20, 30, 0.55);
-  backdrop-filter: blur(10px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+  width: 380px;
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(15, 15, 25, 0.55);
+  backdrop-filter: blur(14px);
+  box-shadow: 
+    0 10px 40px rgba(0,0,0,0.6),
+    inset 0 0 20px rgba(255,255,255,0.03);
+}
+
+/* 🏆 tytuł */
+.title {
+  font-size: 18px;
+  margin-bottom: 10px;
+  opacity: 0.85;
+  font-weight: 600;
 }
 
 /* 👤 PLAYER */
@@ -24,12 +35,16 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 10px;
+  padding: 10px 12px;
   margin: 6px 0;
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(255,255,255,0.05);
   transition: transform 0.5s ease, background 0.3s ease;
-  will-change: transform;
+}
+
+/* hover subtle */
+.player:hover {
+  background: rgba(255,255,255,0.08);
 }
 
 /* 🥇 TOP 1 */
@@ -37,32 +52,46 @@ body {
   background: linear-gradient(90deg, #f7c948, #fadb5f);
   color: black;
   font-weight: bold;
+  box-shadow: 0 0 15px rgba(255,215,0,0.4);
 }
 
+/* left side */
 .left {
   display: flex;
   align-items: center;
 }
 
+/* avatar */
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  margin-right: 8px;
+  object-fit: cover;
+  border: 2px solid rgba(255,255,255,0.2);
+}
+
+/* rank */
 .rank {
   margin-right: 8px;
   opacity: 0.7;
   font-weight: bold;
 }
 
+/* points */
 .points {
   font-weight: bold;
-  transition: all 0.3s ease;
+  font-size: 16px;
 }
 
-/* 🔥 highlight zmiany */
+/* 🔥 zmiana */
 .player.updated {
   animation: flash 0.5s;
 }
 
 @keyframes flash {
   0% { transform: scale(1); background: rgba(255,255,255,0.2); }
-  50% { transform: scale(1.03); }
+  50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
 </style>
@@ -70,6 +99,7 @@ body {
 
 <body>
 <div class="container">
+  <div class="title">🏆 Ranking</div>
   <div id="board">Ładowanie...</div>
 </div>
 
@@ -77,7 +107,6 @@ body {
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
 let lastData = {};
-let playersState = [];
 
 // 🎯 animacja liczby
 function animateNumber(el, start, end) {
@@ -94,12 +123,11 @@ function animateNumber(el, start, end) {
   requestAnimationFrame(update);
 }
 
-// 🔥 FLIP ANIMATION (smooth reorder)
+// 🔥 FLIP
 function applyFLIP(oldPositions, newElements) {
   newElements.forEach(el => {
     const first = oldPositions.get(el.dataset.name);
     const last = el.getBoundingClientRect();
-
     if (!first) return;
 
     const dx = first.left - last.left;
@@ -116,7 +144,7 @@ function applyFLIP(oldPositions, newElements) {
 
 async function loadData() {
   try {
-    const res = await fetch(URL);
+    const res = await fetch(URL + "&t=" + Date.now());
     const text = await res.text();
 
     const json = JSON.parse(
@@ -127,40 +155,25 @@ async function loadData() {
 
     let players = rows.map(r => ({
       name: r.c[0]?.v || "",
-      points: r.c[1]?.v || 0
+      points: r.c[1]?.v || 0,
+      avatar: r.c[2]?.v || "https://i.imgur.com/4M34hi2.png"
     }));
 
     players.sort((a,b) => b.points - a.points);
 
     const board = document.getElementById("board");
 
-    // 📸 zapis pozycji przed zmianą
+    // 📸 stare pozycje
     const oldPositions = new Map();
     document.querySelectorAll(".player").forEach(el => {
       oldPositions.set(el.dataset.name, el.getBoundingClientRect());
     });
 
-    // 🧱 pierwszy render
-    const html = players
-  .sort((a, b) => b.points - a.points)
-  .map((p, i) => `
-    <div class="player ${i === 0 ? 'top1' : ''}" data-name="${p.name}">
-      <div class="left">
-        <span class="rank">#${i+1}</span>
-        ${p.name}
-      </div>
-      <div class="points">${p.points}</div>
-    </div>
-  `)
-  .join("");
-
-document.getElementById("board").innerHTML = html;
-    }
-
-    // 🔄 aktualizacja DOM
+    // 🧱 render
     board.innerHTML = players.map((p, i) => `
       <div class="player ${i===0?'top1':''}" data-name="${p.name}">
         <div class="left">
+          <img class="avatar" src="${p.avatar}">
           <span class="rank">#${i+1}</span>
           ${p.name}
         </div>
@@ -170,22 +183,21 @@ document.getElementById("board").innerHTML = html;
 
     const newEls = document.querySelectorAll(".player");
 
-    // 🔥 FLIP animation (przesuwanie miejsc)
     applyFLIP(oldPositions, newEls);
 
-    // 🎯 animacja punktów
+    // 🎯 animacje punktów
     players.forEach(p => {
       const el = document.querySelector(`[data-name="${p.name}"]`);
       if (!el) return;
 
       const pointsEl = el.querySelector(".points");
 
-      if (lastData[p.name] !== p.points) {
+      if (lastData[p.name] !== undefined && lastData[p.name] !== p.points) {
         el.classList.add("updated");
 
         animateNumber(
           pointsEl,
-          lastData[p.name] || 0,
+          lastData[p.name],
           p.points
         );
 
@@ -197,13 +209,12 @@ document.getElementById("board").innerHTML = html;
 
   } catch (err) {
     console.error(err);
-    document.getElementById("board").innerHTML =
-      "Błąd ładowania danych";
+    document.getElementById("board").innerHTML = "Błąd ładowania danych";
   }
 }
 
 loadData();
-setInterval(loadData, 3000);
+setInterval(loadData, 2500);
 </script>
 </body>
 </html>
