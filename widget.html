@@ -11,15 +11,12 @@ body {
   font-family: 'Segoe UI', sans-serif;
   background: transparent;
   color: #eaeaf0;
-  overflow: hidden;
 }
 
-/* FIX: stabilny layout */
 .container {
   width: 820px;
   display: flex;
   gap: 20px;
-  align-items: flex-start;
 }
 
 .column {
@@ -27,11 +24,8 @@ body {
   padding: 14px;
   border-radius: 14px;
   background: rgba(12, 14, 20, 0.85);
+  backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 215, 0, 0.15);
-
-  /* 🔥 FIX: blokuje rozciąganie */
-  height: 420px;
-  overflow: hidden;
 }
 
 /* PLAYER */
@@ -39,16 +33,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-
   padding: 10px 12px;
   margin: 8px 0;
-
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(20,20,30,0.9), rgba(10,10,15,0.9));
   border: 1px solid rgba(255,255,255,0.06);
-
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
-  box-sizing: border-box; /* 🔥 FIX */
+  transition: 0.3s;
+  position: relative;
 }
 
 /* LEFT */
@@ -56,21 +47,18 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  min-width: 0;
 }
 
 .avatar {
   width: 34px;
   height: 34px;
   border-radius: 6px;
-  flex-shrink: 0;
 }
 
 .rank {
   width: 28px;
   text-align: center;
   color: #aaa;
-  flex-shrink: 0;
 }
 
 /* NAME */
@@ -78,23 +66,42 @@ body {
   font-family: 'Bebas Neue', sans-serif;
   font-size: 16px;
   letter-spacing: 1.5px;
-  white-space: nowrap;
 }
 
 /* POINTS */
 .points {
   font-weight: bold;
   color: #facc15;
-  flex-shrink: 0;
 }
 
-/* 🥇 TOP1 */
+/* 🥇 TOP 1 */
 .player.top1 {
   border: 1px solid rgba(255,215,0,0.9);
-  box-shadow: 0 0 20px rgba(255,215,0,0.6);
+  box-shadow: 0 0 25px rgba(255,215,0,0.6);
+  animation: topPulse 1.6s infinite ease-in-out;
 }
 
-/* 👑 CORONA (STATIC) */
+@keyframes topPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+}
+
+/* NAME SHINE */
+.player.top1 .name {
+  background: linear-gradient(90deg, #fff, #ffd86b, #fff);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shine 2s linear infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
+/* 👑 CORONA (STATYCZNA) */
 .crown {
   opacity: 0;
   margin: 0 6px;
@@ -107,12 +114,18 @@ body {
 /* 🏆 WIN */
 .player.win {
   border: 1px solid #ffd700;
-  box-shadow: 0 0 25px rgba(255,215,0,0.9);
+  box-shadow: 0 0 40px rgba(255,215,0,1);
 }
 
-/* smooth movement placeholder */
-.player.moving {
-  transform: scale(1.02);
+/* POWERUP */
+.player.powerup {
+  animation: powerUp 0.8s ease;
+}
+
+@keyframes powerUp {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 </style>
 </head>
@@ -128,11 +141,15 @@ body {
 
 const URL = "https://docs.google.com/spreadsheets/d/1_h0Qgc6WVnrTBJMoVLVxsPjko9-tqztPyxEOj-AYbZI/gviz/tq?tqx=out:json";
 
-let winTriggered = new Set();
+let lastLeader = null;
+let winTriggered = {};
+let crownState = {};
 
 /* CONFETTI */
 function launchConfetti() {
-  for (let i = 0; i < 20; i++) {
+  const end = Date.now() + 1200;
+
+  (function frame() {
     const c = document.createElement("div");
     c.style.position = "fixed";
     c.style.left = Math.random() * 100 + "vw";
@@ -141,19 +158,18 @@ function launchConfetti() {
     c.style.height = "10px";
     c.style.background = "#ffd700";
     c.style.zIndex = 9999;
-
     document.body.appendChild(c);
 
-    let y = 0;
-    const fall = setInterval(() => {
-      y += 5;
-      c.style.top = y + "px";
-      if (y > window.innerHeight) {
+    let fall = setInterval(() => {
+      c.style.top = (parseFloat(c.style.top) + 5) + "px";
+      if (parseFloat(c.style.top) > window.innerHeight) {
         c.remove();
         clearInterval(fall);
       }
     }, 16);
-  }
+
+    if (Date.now() < end) requestAnimationFrame(frame);
+  })();
 }
 
 /* LOAD */
@@ -187,26 +203,53 @@ async function loadData() {
 
   players.forEach((p,i) => p.rank = i+1);
 
-  renderColumn("col1", players.slice(0,4));
-  renderColumn("col2", players.slice(4,8));
+  document.getElementById("col1").innerHTML = render(players.slice(0,4));
+  document.getElementById("col2").innerHTML = render(players.slice(4,8));
 
-  /* WIN LOGIC */
+  /* TOP1 */
+  const leader = players[0]?.name;
+
+  if (leader && leader !== lastLeader) {
+    const el = document.querySelector(`[data-name="${leader}"]`);
+    if (el) {
+      el.classList.add("powerup");
+      setTimeout(() => el.classList.remove("powerup"), 800);
+    }
+    lastLeader = leader;
+  }
+
+  /* LOGIC */
   players.forEach(p => {
     const el = document.querySelector(`[data-name="${p.name}"]`);
     if (!el) return;
 
-    if (p.isWin && !winTriggered.has(p.name)) {
-      winTriggered.add(p.name);
-      launchConfetti();
+    const pointsEl = el.querySelector(".points");
+
+    /* WIN */
+    if (p.isWin) {
+      el.classList.add("win");
+
+      if (!winTriggered[p.name]) {
+        winTriggered[p.name] = true;
+        launchConfetti();
+      }
+
+      pointsEl.textContent = "🏆 WIN";
+      return;
     }
+
+    /* 20+ */
+    if (p.points >= 20) {
+      el.classList.add("achieved20");
+    }
+
+    pointsEl.textContent = p.points;
   });
 }
 
-/* SAFE RENDER (NO DOM BREAKING) */
-function renderColumn(id, players) {
-  const container = document.getElementById(id);
-
-  container.innerHTML = players.map(p => `
+/* RENDER */
+function render(players) {
+  return players.map(p => `
     <div class="player ${p.rank===1?'top1':''} ${p.isWin?'win':''}" data-name="${p.name}">
       <div class="left">
         <img class="avatar" src="${p.avatar}">
@@ -220,16 +263,6 @@ function renderColumn(id, players) {
       </div>
     </div>
   `).join("");
-
-  /* 20+ AFTER RENDER */
-  container.querySelectorAll(".player").forEach(el => {
-    const pointsText = el.querySelector(".points").textContent;
-    const val = parseInt(pointsText);
-
-    if (!isNaN(val) && val >= 20) {
-      el.classList.add("achieved20");
-    }
-  });
 }
 
 loadData();
